@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ระบบบันทึกผลการตรวจประเมินใบอนุญาตทำงาน (Permit to Work Inspection) พร้อมระบบแดชบอร์ดสถิติความปลอดภัยแบบเรียลไทม์ และระบบส่งออกไฟล์ Excel">
+  <title>Permit to Work Inspection System</title>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
+    <aside class="sidebar" aria-label="แถบการนำทาง">
+      <div class="logo-section">
+        <i data-lucide="shield-alert"></i>
+        <span class="logo-text" style="font-size: 1.15rem; font-weight: 800;">GSP Permit to Work Inspection</span>
+      </div>
+
+      <nav class="nav-menu">
+        <button id="nav-form" class="nav-item active" onclick="switchTab('form')" aria-label="เปิดแบบฟอร์มตรวจประเมิน">
+          <i data-lucide="clipboard-check"></i>
+          <span>บันทึกผลการตรวจประเมินใบอนุญาตทำงาน</span>
+        </button>
+        <button id="nav-dashboard" class="nav-item" onclick="switchTab('dashboard')" aria-label="เปิดแดชบอร์ด">
+          <i data-lucide="activity"></i>
+          <span>PTW Dashboard</span>
+        </button>
+        <button id="nav-history" class="nav-item" onclick="switchTab('history')" aria-label="เปิดประวัติและการส่งออก">
+          <i data-lucide="database"></i>
+          <span>ประวัติ &amp; ส่งออก Excel</span>
+        </button>
+        <button id="nav-safety" class="nav-item" onclick="switchTab('safety')" aria-label="ข้อมูลความปลอดภัย">
+          <i data-lucide="info"></i>
+          <span>Safety Information</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p>Operational Safety App</p>
+        <p>© 2026 GSP Safety Team</p>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN CONTENT AREA
+         ========================================== -->
+    <main class="main-content">
+
+      <!-- PAGE HEADER -->
+      <header class="page-header">
+        <div class="page-title">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+            <span style="padding: 2px 8px; background: #dbeafe; color: #1d4ed8; font-size: 10px; font-weight: 800; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;">Operational Safety</span>
+          </div>
+          <h1 id="main-heading">
+            <i data-lucide="shield-check" style="color: var(--primary); margin-right: 12px; width: 32px; height: 32px; vertical-align: middle;"></i>
+            <span id="heading-text">Permit to Work Inspection</span>
+          </h1>
+
+          <div id="header-target-legend" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
+             <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 50px; box-shadow: var(--shadow-sm);">
+                <div id="live-indicator-dot" class="target-pulsing-dot" style="background: var(--success); width: 8px; height: 8px;"></div>
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);" id="live-indicator-text">YTD Actual: 0.00%</span>
+             </div>
+             <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 50px; box-shadow: var(--shadow-sm);">
+                <div style="width: 8px; height: 8px; border-radius: 50px; background: var(--primary);"></div>
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Target Limit: 0.19%</span>
+             </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <span class="badge badge-approved" id="current-date-badge" style="padding: 10px 18px; font-size: 0.85rem; display: flex; gap: 8px; align-items: center; background: #ffffff; color: var(--text-main); border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+            <i data-lucide="calendar" style="width: 16px; height: 16px; color: var(--primary);"></i>
+            <span id="header-date-text">วันที่ 10 มิ.ย. 2569</span>
+          </span>
+        </div>
+      </header>
+
+      <!-- ==========================================
+           TAB 1: DASHBOARD SECTION
+           ========================================== -->
+      <section id="section-dashboard" class="content-section" aria-labelledby="dashboard-title">
+        <h2 id="dashboard-title" style="display:none">แดชบอร์ดข้อมูลสถิติ PTW</h2>
+
+        <!-- Dashboard Action Bar -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+          <button class="btn btn-secondary" onclick="openDashboardEditor()" id="btn-edit-dashboard" style="gap: 8px; border: 1.5px dashed var(--border-hover); color: var(--text-muted);">
+            <i data-lucide="database" style="width:17px;height:17px;"></i>
+            <span>แก้ไขข้อมูลสรุปรายเดือน Dashboard</span>
+          </button>
+        </div>
+
+        <!-- KPI METRICS ROW -->
+        <div class="metrics-grid">
+          <div class="card metric-card">
+            <div class="metric-info">
+              <h3>Total Inspect (YTD)</h3>
+              <div class="value" id="kpi-total-inspect">0</div>
+              <div class="sub-text">ใบงานที่ได้รับการตรวจสอบทั้งหมด</div>
+            </div>
+            <div class="metric-icon-box">
+              <i data-lucide="clipboard-check"></i>
+            </div>
+          </div>
+
+          <div class="card metric-card">
+            <div class="metric-info">
+              <h3>%PTW Inspection (Avg)</h3>
+              <div class="value" id="kpi-inspect-avg" style="color: var(--secondary);">0.00%</div>
+              <div class="sub-text">ค่าเฉลี่ยอัตราการสุ่มตรวจรายเดือน</div>
+            </div>
+            <div class="metric-icon-box">
+              <i data-lucide="target"></i>
+            </div>
+          </div>
+
+          <div class="card metric-card" id="kpi-ptw-card" style="border-top: 4px solid var(--success);">
+            <div style="display: flex; flex-direction: column; width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1.5px;">KPI PTW</span>
+                <div id="kpi-target-status-badge" class="target-pulsing-badge">
+                  <div class="target-pulsing-dot"></div>
+                  <span id="kpi-target-status-text">ON TARGET</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <span id="kpi-defect-rate" style="font-size: 2.5rem; font-weight: 900; letter-spacing: -1px;">0.00%</span>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-dark);">/ 0.19%</span>
+                  </div>
+                  <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-top: 8px;">
+                    Non-Conformance สะสม: <span id="kpi-defect-count" style="color: var(--danger);">0 ใบ</span>
+                  </div>
+                </div>
+                <i data-lucide="shield-check" id="kpi-defect-icon" style="width: 56px; height: 56px; color: rgba(16, 185, 129, 0.08);"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 1 -->
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-title" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="trending-up" style="color: var(--primary);"></i>
+                <span>% การตรวจประเมินรายเดือน</span>
+              </div>
+              <span class="chart-header-actions">Target 10.00%</span>
+            </div>
+            <div class="chart-container-full">
+              <canvas id="composedChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="alert-circle" style="color: var(--danger);"></i>
+                <span>% ใบอนุญาตทำงาน Non-Conformance</span>
+              </div>
+              <span class="chart-header-actions" style="background:#fee2e2; color:#ef4444; border-color:#fca5a5;">Limit 0.19%</span>
+            </div>
+            <div class="chart-container-full">
+              <canvas id="defectChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 2: Auditor Dept Breakdown -->
+        <div class="charts-row-2">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="users" style="color: var(--secondary); width: 24px; height: 24px;"></i>
+                  <h3 style="font-size: 1.25rem; font-weight: 900; color: var(--text-headings); letter-spacing: -0.3px;">จำนวนตรวจประเมินแยกตามหน่วยงานผู้ตรวจ</h3>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-left: 32px;" id="auditor-chart-subtitle">
+                  ข้อมูลประจำเดือน ม.ค. | เป้าหมายมาตรฐาน 40 ใบ/หน่วยงาน/เดือน
+                </p>
+              </div>
+
+              <div class="month-selector-group">
+                <div style="display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+                  <i data-lucide="filter" style="width: 14px; height: 14px; color: var(--text-dark);"></i>
+                  <span>เลือกเดือน:</span>
+                </div>
+                <button class="month-btn" onclick="changeSelectedMonth('Nov')" id="btn-month-Nov">Nov</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Dec')" id="btn-month-Dec">Dec</button>
+                <button class="month-btn active" onclick="changeSelectedMonth('Jan')" id="btn-month-Jan">Jan</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Feb')" id="btn-month-Feb">Feb</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Mar')" id="btn-month-Mar">Mar</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Apr')" id="btn-month-Apr">Apr</button>
+                <button class="month-btn" onclick="changeSelectedMonth('May')" id="btn-month-May">May</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Jun')" id="btn-month-Jun">Jun</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Jul')" id="btn-month-Jul">Jul</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Aug')" id="btn-month-Aug">Aug</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Sep')" id="btn-month-Sep">Sep</button>
+                <button class="month-btn" onclick="changeSelectedMonth('Oct')" id="btn-month-Oct">Oct</button>
+              </div>
+            </div>
+            <div class="chart-container-large">
+              <canvas id="auditorDeptChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW 3: Work Area Breakdown -->
+        <div class="charts-row-2" style="margin-top: 0;">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="map-pin" style="color: var(--success); width: 24px; height: 24px;"></i>
+                  <h3 style="font-size: 1.25rem; font-weight: 900; color: var(--text-headings); letter-spacing: -0.3px;">จำนวนตรวจประเมินแยกตามพื้นที่ปฏิบัติงาน</h3>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-left: 32px;" id="area-chart-subtitle">
+                  ข้อมูลรวมจากการบันทึกในระบบทั้งหมด
+                </p>
+              </div>
+
+              <div class="month-selector-group">
+                <div style="display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+                  <i data-lucide="filter" style="width: 14px; height: 14px; color: var(--text-dark);"></i>
+                  <span>เลือกเดือน:</span>
+                </div>
+                <button class="month-btn active" onclick="changeWorkAreaMonth('all')" id="btn-area-month-all">ทั้งหมด</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Nov')" id="btn-area-month-Nov">Nov</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Dec')" id="btn-area-month-Dec">Dec</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Jan')" id="btn-area-month-Jan">Jan</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Feb')" id="btn-area-month-Feb">Feb</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Mar')" id="btn-area-month-Mar">Mar</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Apr')" id="btn-area-month-Apr">Apr</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('May')" id="btn-area-month-May">May</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Jun')" id="btn-area-month-Jun">Jun</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Jul')" id="btn-area-month-Jul">Jul</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Aug')" id="btn-area-month-Aug">Aug</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Sep')" id="btn-area-month-Sep">Sep</button>
+                <button class="month-btn" onclick="changeWorkAreaMonth('Oct')" id="btn-area-month-Oct">Oct</button>
+              </div>
+            </div>
+            <div class="chart-container-large">
+              <canvas id="workAreaChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           TAB 2: ASSESSMENT FORM SECTION
+           ========================================== -->
+      <section id="section-form" class="content-section active" aria-labelledby="form-section-title">
+        <h2 id="form-section-title" style="display:none">บันทึกผลการตรวจประเมินใบอนุญาตทำงาน</h2>
+
+        <form id="audit-form" class="form-layout" onsubmit="handleFormSubmit(event)">
+
+          <!-- Section: รายละเอียดใบอนุญาตทำงาน -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="file-text" style="color: var(--primary);"></i>
+              <span>รายละเอียดใบอนุญาตทำงาน</span>
+            </div>
+
+            <div class="form-grid">
+              <!-- Row 1 -->
+              <div class="form-group">
+                <label for="input-permit-no">เลขที่ใบอนุญาตทำงาน (Permit No.) *</label>
+                <input type="text" id="input-permit-no" required placeholder="เช่น N/SAP/ปภ.ผยก./00028/69" class="form-input">
+              </div>
+              <div class="form-group">
+                <label for="select-permit-type">ประเภทใบอนุญาตทำงาน *</label>
+                <select id="select-permit-type" required class="form-select">
+                  <option value="" disabled selected>-- เลือกประเภทใบอนุญาต --</option>
+                  <option value="Cold Work">Cold Work</option>
+                  <option value="Hot Work Class I">Hot Work Class I</option>
+                  <option value="Hot Work Class II">Hot Work Class II</option>
+                  <option value="Confined Space">Confined Space</option>
+                  <option value="Mobile Crane/Hiab, Unic Crane">Mobile Crane/Hiab, Unic Crane</option>
+                  <option value="Excavation">Excavation</option>
+                  <option value="Electrical/Instrument">Electrical/Instrument</option>
+                  <option value="Scaffolding">Scaffolding</option>
+                  <option value="Radio Isotopes">Radio Isotopes</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="select-work-area">พื้นที่ปฏิบัติงาน *</label>
+                <select id="select-work-area" required class="form-select">
+                  <option value="" disabled selected>-- เลือกพื้นที่ --</option>
+                  <option value="GSP#1">GSP#1</option>
+                  <option value="GSP#2">GSP#2</option>
+                  <option value="GSP#3">GSP#3</option>
+                  <option value="ESP">ESP</option>
+                  <option value="GSP#5">GSP#5</option>
+                  <option value="GSP#6">GSP#6</option>
+                  <option value="GPPP">GPPP</option>
+                  <option value="Tank Farm">Tank Farm</option>
+                  <option value="CWWTP">CWWTP</option>
+                  <option value="Lab">Lab</option>
+                  <option value="คลังสารเคมี">คลังสารเคมี</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="input-date">วันที่ตรวจประเมิน *</label>
+                <input type="date" id="input-date" required class="form-input" onchange="updateMonthFromDate()">
+              </div>
+
+              <!-- Row 2 -->
+              <div class="form-group">
+                <label for="input-auditor">ชื่อผู้ตรวจประเมิน *</label>
+                <input type="text" id="input-auditor" required placeholder="ระบุชื่อผู้ตรวจประเมิน" class="form-input">
+              </div>
+              <div class="form-group">
+                <label for="select-auditor-dept">หน่วยงานผู้ตรวจประเมิน *</label>
+                <select id="select-auditor-dept" required class="form-select">
+                  <option value="" disabled selected>-- เลือกหน่วยงาน --</option>
+                  <option value="GSP#1 Process (ปผ.)">GSP#1 Process (ปผ.)</option>
+                  <option value="GSP#1 Utility (ปผ.)">GSP#1 Utility (ปผ.)</option>
+                  <option value="GSP#2 (ปผ.)">GSP#2 (ปผ.)</option>
+                  <option value="GSP#3 (ปผ.)">GSP#3 (ปผ.)</option>
+                  <option value="ESP (ปอ.)">ESP (ปอ.)</option>
+                  <option value="GSP#5 (ปต.)">GSP#5 (ปต.)</option>
+                  <option value="GSP#6 (ปล.)">GSP#6 (ปล.)</option>
+                  <option value="Tank Farm &amp; CWWTP (คธ.)">Tank Farm &amp; CWWTP (คธ.)</option>
+                  <option value="GPPP (ปก.)">GPPP (ปก.)</option>
+                  <option value="บง.วบก.">บง.วบก.</option>
+                  <option value="บค.วบก.">บค.วบก.</option>
+                  <option value="บฟ.วบก.">บฟ.วบก.</option>
+                  <option value="วก.วบก.">วก.วบก.</option>
+                  <option value="ตร.วบก.">ตร.วบก.</option>
+                  <option value="ปภ.ผยก.">ปภ.ผยก.</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- DYNAMIC CHECKLIST CARDS -->
+          <div id="dynamic-checklist-container"></div>
+
+          <!-- Section: สรุปผลการตรวจประเมิน & เอกสารหลักฐาน -->
+          <div class="card">
+            <div class="card-title">
+              <i data-lucide="edit-3" style="color: var(--primary);"></i>
+              <span>สรุปผลการตรวจประเมินใบอนุญาต &amp; เอกสารหลักฐาน</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label for="input-remarks">ข้อสังเกต / ข้อบกพร่องที่พบ (Remarks)</label>
+              <textarea id="input-remarks" placeholder="ระบุข้อบกพร่องที่พบ หรือข้อเสนอแนะเพิ่มเติม..." class="form-textarea"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label for="select-status">สรุปผลการตรวจประเมินใบอนุญาตทำงาน *</label>
+              <select id="select-status" required class="form-select" style="font-weight: 700;">
+                <option value="conformance">สอดคล้อง (Conformance)</option>
+                <option value="non_conformance">ไม่สอดคล้อง (Non-Conformance)</option>
+              </select>
+            </div>
+
+            <!-- File Attachment -->
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label>แนบไฟล์หลักฐานการตรวจประเมิน (ถ่ายภาพด้วยกล้อง หรือ เลือกรูปภาพ)</label>
+              <div class="file-upload-area" id="file-drop-zone" onclick="document.getElementById('input-files').click()">
+                <i data-lucide="camera" style="width: 36px; height: 36px; color: var(--primary); margin-bottom: 10px;"></i>
+                <p style="font-weight: 700; color: var(--text-main); margin: 0; font-size: 0.95rem;">คลิกเพื่อถ่ายภาพ หรือ เลือกไฟล์รูปภาพ</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0 0;">รองรับ JPG, PNG, PDF — สูงสุด 10MB ต่อไฟล์</p>
+                <!-- Added capture="environment" to launch rear camera on mobile devices -->
+                <input type="file" id="input-files" multiple accept="image/jpeg,image/png,application/pdf" capture="environment" style="display:none" onchange="handleFileSelect(event)">
+              </div>
+              <div id="file-preview-list" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <div class="form-summary-panel">
+              <button type="button" class="btn btn-secondary" onclick="resetForm()" id="btn-reset-form">
+                <i data-lucide="rotate-ccw"></i>
+                <span>ล้างค่าฟอร์ม</span>
+              </button>
+              <button type="submit" class="btn btn-success" id="btn-submit-form">
+                <i data-lucide="save"></i>
+                <span>บันทึกผลการตรวจประเมิน</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- ==========================================
+           TAB 3: HISTORY & EXPORT SECTION
+           ========================================== -->
+      <section id="section-history" class="content-section" aria-labelledby="history-section-title">
+        <h2 id="history-section-title" style="display:none">ประวัติและส่งออกรายงาน</h2>
+
+        <div class="card" style="margin-bottom: 28px;">
+          <div class="card-title">
+            <i data-lucide="filter" style="color: var(--primary);"></i>
+            <span>ค้นหาและกรองข้อมูลประวัติการตรวจประเมิน</span>
+          </div>
+
+          <div class="filter-bar">
+            <div class="form-group">
+              <label for="filter-search">ค้นหาเลขใบอนุญาต / ผู้ตรวจประเมิน / พื้นที่</label>
+              <input type="text" id="filter-search" placeholder="พิมพ์คำที่ต้องการค้นหา..." class="form-input" oninput="applyFilters()">
+            </div>
+
+            <div class="form-group">
+              <label for="filter-area">หน่วยงานผู้ตรวจ</label>
+              <select id="filter-area" class="form-select" onchange="applyFilters()">
+                <option value="all">ทั้งหมด</option>
+                <option value="GSP#1 Process (ปผ.)">GSP#1 Process (ปผ.)</option>
+                <option value="GSP#1 Utility (ปผ.)">GSP#1 Utility (ปผ.)</option>
+                <option value="GSP#2 (ปผ.)">GSP#2 (ปผ.)</option>
+                <option value="GSP#3 (ปผ.)">GSP#3 (ปผ.)</option>
+                <option value="ESP (ปอ.)">ESP (ปอ.)</option>
+                <option value="GSP#5 (ปต.)">GSP#5 (ปต.)</option>
+                <option value="GSP#6 (ปล.)">GSP#6 (ปล.)</option>
+                <option value="Tank Farm &amp; CWWTP (คธ.)">Tank Farm &amp; CWWTP (คธ.)</option>
+                <option value="GPPP (ปก.)">GPPP (ปก.)</option>
+                <option value="บง.วบก.">บง.วบก.</option>
+                <option value="บค.วบก.">บค.วบก.</option>
+                <option value="บฟ.วบก.">บฟ.วบก.</option>
+                <option value="วก.วบก.">วก.วบก.</option>
+                <option value="ตร.วบก.">ตร.วบก.</option>
+                <option value="ปภ.ผยก.">ปภ.ผยก.</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="filter-status">ผลประเมิน</label>
+              <select id="filter-status" class="form-select" onchange="applyFilters()">
+                <option value="all">ทั้งหมด</option>
+                <option value="conformance">สอดคล้อง (Conformance)</option>
+                <option value="non_conformance">ไม่สอดคล้อง (Non-Conformance)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="filter-date">วันที่ตรวจประเมิน</label>
+              <input type="date" id="filter-date" class="form-input" onchange="applyFilters()">
+            </div>
+
+            <button class="btn btn-secondary" onclick="clearFilters()" id="btn-clear-filters" style="margin-top: auto; padding: 12px 18px;">
+              <i data-lucide="x"></i>
+              <span>ล้างตัวกรอง</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="justify-content: space-between; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="list" style="color: var(--primary);"></i>
+              <span>รายการบันทึกผลการตรวจประเมินทั้งหมด</span>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <!-- Import Button -->
+              <button class="btn btn-primary" onclick="document.getElementById('import-excel-input').click()" id="btn-import-excel">
+                <i data-lucide="file-plus"></i>
+                <span>นำเข้าข้อมูลจาก Excel</span>
+              </button>
+              <input type="file" id="import-excel-input" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
+              <!-- Export Button -->
+              <button class="btn btn-success" onclick="exportToExcel()" id="btn-export-excel">
+                <i data-lucide="file-spreadsheet"></i>
+                <span>ส่งออกข้อมูลเป็น Excel (.xlsx)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table" id="audits-table">
+              <thead>
+                <tr>
+                  <th>วันที่ตรวจ</th>
+                  <th>เลขใบอนุญาต</th>
+                  <th>ประเภทใบอนุญาต</th>
+                  <th>พื้นที่ปฏิบัติงาน</th>
+                  <th>หน่วยงานผู้ตรวจ</th>
+                  <th>ผู้ตรวจประเมิน</th>
+                  <th>ผลประเมิน</th>
+                  <th>ไฟล์แนบ</th>
+                  <th style="width: 100px;">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="audits-table-body"></tbody>
+            </table>
+          </div>
+
+          <div id="no-data-indicator" class="no-data" style="display: none;">
+            <i data-lucide="database" style="width: 48px; height: 48px;"></i>
+            <p style="font-weight: 700; font-size: 1rem; color: var(--text-headings); margin-top: 12px;">ไม่พบข้อมูลบันทึกการตรวจประเมิน</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">กรุณาลองระบุคำค้นหาใหม่ หรือทำการบันทึกข้อมูลการตรวจประเมินเพิ่มเติม</p>
+          </div>
+        </div>
+      </section>
+      <!-- ==========================================
+           TAB 4: SAFETY INFORMATION SECTION
+           ========================================== -->
+      <section id="section-safety" class="content-section" aria-labelledby="safety-title">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+              <i data-lucide="info" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.25rem; font-weight: 900; color: var(--text-headings); display: flex; align-items: center; gap: 10px;">
+                <span id="safety-main-title">ประชาสัมพันธ์ความปลอดภัย (Safety Information)</span>
+                <button onclick="editSafetyTitle()" style="background:var(--bg-light); border:1px solid var(--border-color); border-radius:4px; cursor:pointer; color:var(--text-muted); padding:4px; display:flex; align-items:center; justify-content:center;" title="เปลี่ยนชื่อหัวข้อ">
+                  <i data-lucide="edit-2" style="width:14px; height:14px;"></i>
+                </button>
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">เอกสารประชาสัมพันธ์ และเว็บไซต์ข้อมูลความปลอดภัยที่เกี่ยวข้อง</p>
+            </div>
+          </div>
+          
+          <div>
+            <button class="btn btn-primary" onclick="openPrModal()">
+              <i data-lucide="plus"></i>
+              <span>เพิ่มข้อมูลประชาสัมพันธ์</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+          <div id="safety-category-tabs-container" style="display: flex; gap: 8px; overflow-x: auto; flex: 1;">
+            <!-- Tabs will be rendered here dynamically -->
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="openCategoryEditor()" style="margin-left: 16px; flex-shrink: 0;" title="จัดการหมวดหมู่">
+            <i data-lucide="settings"></i> จัดการหมวดหมู่
+          </button>
+        </div>
+        
+        <style>
+          /* ซ่อน Scrollbar ของตู้โชว์ PR */
+          #safety-content-container::-webkit-scrollbar { display: none; }
+        </style>
+        <div style="position: relative; width: 100%; display: flex; align-items: center;">
+          <button onclick="scrollSafety(-1)" style="position: absolute; left: -16px; z-index: 10; background: #ffffff; border: 1px solid var(--border-color); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-md); color: var(--primary);" aria-label="เลื่อนซ้าย">
+            <i data-lucide="chevron-left" style="width: 24px; height: 24px;"></i>
+          </button>
+          
+          <div id="safety-content-container" style="display: flex; gap: 24px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; padding: 10px 0; width: 100%; -ms-overflow-style: none; scrollbar-width: none;">
+            <!-- Safety items will be rendered here -->
+          </div>
+
+          <button onclick="scrollSafety(1)" style="position: absolute; right: -16px; z-index: 10; background: #ffffff; border: 1px solid var(--border-color); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-md); color: var(--primary);" aria-label="เลื่อนขวา">
+            <i data-lucide="chevron-right" style="width: 24px; height: 24px;"></i>
+          </button>
+        </div>
+        
+        <div id="safety-empty-state" style="border: 2px dashed var(--border-color); border-radius: var(--radius-md); background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; margin-top: 20px;">
+          <i data-lucide="layout-template" style="width: 64px; height: 64px; color: #cbd5e1; margin-bottom: 16px;"></i>
+          <h4 style="font-size: 1.1rem; color: #64748b; font-weight: 700; margin-bottom: 8px;">ยังไม่มีข้อมูลประชาสัมพันธ์</h4>
+          <p style="font-size: 0.85rem; color: #94a3b8; max-width: 400px;">คุณสามารถเพิ่มรูปภาพประกาศ หรือฝังเว็บไซต์ Canva เพื่อให้พนักงานเข้ามาดูข้อมูลได้จากหน้านี้</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL OVERLAY -->
+  <div class="modal-overlay" id="details-modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modal-title-text">รายละเอียดผลการตรวจประเมินใบอนุญาตทำงาน</h2>
+        <button class="modal-close" onclick="closeModal()" aria-label="ปิดรายละเอียด">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body-content"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">
+          <i data-lucide="corner-up-left"></i>
+          <span>ปิดหน้าต่าง</span>
+        </button>
+        <button class="btn btn-primary" id="modal-print-btn" onclick="printModalContent()">
+          <i data-lucide="printer"></i>
+          <span>พิมพ์รายงาน</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- DASHBOARD EDITOR MODAL -->
+  <div class="modal-overlay" id="dashboard-editor-modal" onclick="closeDashboardEditor(event)">
+    <div class="modal-content" style="max-width: 720px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 style="display:flex;align-items:center;gap:10px;">
+          <i data-lucide="database" style="color:var(--primary);width:22px;height:22px;"></i>
+          แก้ไขข้อมูลสรุปรายเดือน (Dashboard)
+        </h2>
+        <button class="modal-close" onclick="closeDashboardEditor()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:14px 18px;margin-bottom:20px;font-size:0.85rem;color:#1d4ed8;display:flex;gap:10px;align-items:flex-start;">
+          <i data-lucide="info" style="width:18px;height:18px;flex-shrink:0;margin-top:1px;"></i>
+          <span>กรอกข้อมูลสรุปรายเดือนในตารางนี้เพื่อให้กราฟ Dashboard แสดงผลทันที โดยไม่ต้องเพิ่มรายละเอียดใบพรม เหมาะสำหรับบันทึกข้อมูลย้อนหลังหรืออัปเดตเดือนปัจจุบัน</span>
+        </div>
+        <div id="dashboard-editor-table"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDashboardEditor()">
+          <i data-lucide="x"></i><span>ยกเลิก</span>
+        </button>
+        <button class="btn btn-success" onclick="saveDashboardSettings()">
+          <i data-lucide="save"></i><span>บันทึก และอัปเดต Dashboard</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- ADD PR MODAL -->
+  <div class="modal-overlay" id="add-pr-modal" onclick="closePrModal(event)">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 style="display:flex;align-items:center;gap:10px;">
+          <i data-lucide="plus-circle" style="color:var(--primary);width:22px;height:22px;"></i>
+          เพิ่มข้อมูลประชาสัมพันธ์
+        </h2>
+        <button class="modal-close" onclick="closePrModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 800;">1. หมวดหมู่เอกสาร</label>
+          <select id="pr-category" class="form-select">
+            <!-- Options will be populated dynamically -->
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 20px;">
+          <label class="form-label" style="font-weight: 800;">2. ประเภทข้อมูล</label>
+          <select id="pr-type" class="form-select" onchange="togglePrType()">
+            <option value="image">อัปโหลดรูปภาพโปสเตอร์ (PNG, JPG, JPEG)</option>
+            <option value="link">ใส่ Link เว็บไซต์ / Canva Site (พร้อมรูปปก)</option>
+          </select>
+        </div>
+        
+        <div id="pr-input-image" style="margin-top: 20px;">
+          <label class="form-label" style="font-weight: 800;">3. เลือกรูปภาพ หรือ ถ่ายภาพ</label>
+          <input type="file" id="pr-file-input" accept="image/png, image/jpeg, image/jpg" capture="environment" class="form-input" multiple style="padding: 10px;">
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">* สามารถเลือกได้หลายไฟล์ หรือถ่ายภาพจากกล้องมือถือ</p>
+        </div>
+        
+        <div id="pr-input-link" style="margin-top: 20px; display: none;">
+          <label class="form-label" style="font-weight: 800;">3. URL เว็บไซต์ / Canva Site</label>
+          <input type="text" id="pr-url-input" class="form-input" placeholder="https://my.canva.site/... หรือเว็บไซต์อื่นๆ">
+          
+          <label class="form-label" style="font-weight: 800; margin-top: 16px;">4. รูปภาพหน้าปก (Cover Image - เลือกได้)</label>
+          <input type="file" id="pr-link-cover-input" accept="image/png, image/jpeg, image/jpg" class="form-input" style="padding: 10px;">
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">* หากไม่อัปโหลดรูปปก ระบบจะสร้างการ์ดลิงก์ให้อัตโนมัติ</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePrModal()">
+          <i data-lucide="x"></i><span>ยกเลิก</span>
+        </button>
+        <button class="btn btn-primary" onclick="submitPrItem()">
+          <i data-lucide="save"></i><span>เพิ่มข้อมูล</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY EDITOR MODAL -->
+  <div class="modal-overlay" id="category-editor-modal" onclick="closeCategoryEditor(event)">
+    <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 style="display:flex;align-items:center;gap:10px;">
+          <i data-lucide="settings" style="color:var(--primary);width:22px;height:22px;"></i>
+          จัดการหมวดหมู่ประชาสัมพันธ์
+        </h2>
+        <button class="modal-close" onclick="closeCategoryEditor()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+          <input type="text" id="new-category-name" class="form-input" placeholder="ชื่อหมวดหมู่ใหม่..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addSafetyCategory()">เพิ่ม</button>
+        </div>
+        <div id="category-list-container" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Category items -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCategoryEditor()">
+          <span>ปิดหน้าต่าง</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
