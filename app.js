@@ -187,6 +187,24 @@ const BASELINE_AREA_PERCENTAGES = {
     { area: 'วก.วบก.',             percentage: 240 },
     { area: 'ตร.วบก.',             percentage: 143 },
     { area: 'ปภ.ผยก.',             percentage: 100 },
+  ],
+  // ข้อมูลจากตาราง (Jun)
+  Jun: [
+    { area: 'GSP#1 Process (ปผ.)', percentage: 110.0 },
+    { area: 'GSP#1 Utility (ปผ.)', percentage: 192.5 },
+    { area: 'GSP#2 (ปผ.)',         percentage: 290.0 },
+    { area: 'GSP#3 (ปผ.)',         percentage: 162.5 },
+    { area: 'ESP (ปอ.)',           percentage: 200.0 },
+    { area: 'GSP#5 (ปต.)',         percentage: 167.5 },
+    { area: 'GSP#6 (ปล.)',         percentage: 162.5 },
+    { area: 'Tank Farm & CWWTP (คธ.)', percentage: 202.5 },
+    { area: 'GPPP (ปก.)',          percentage: 205.0 },
+    { area: 'บง.วบก.',             percentage: 95.0 },
+    { area: 'บค.วบก.',             percentage: 195.0 },
+    { area: 'บฟ.วบก.',             percentage: 122.5 },
+    { area: 'วก.วบก.',             percentage: 235.0 },
+    { area: 'ตร.วบก.',             percentage: 112.5 },
+    { area: 'ปภ.ผยก.',             percentage: 102.5 },
   ]
 };
 
@@ -201,7 +219,8 @@ const BASELINE_WORK_AREA_COUNTS = {
   Feb: [142, 74, 127, 93, 131, 94, 207, 112, 29, 0, 0],
   Mar: [170, 74, 136, 101, 142, 105, 229, 90, 17, 0, 0],
   Apr: [135, 72, 110, 80, 109, 142, 153, 101, 17, 0, 0],
-  May: [100, 91, 129, 111, 110, 169, 175, 100, 21, 0, 0]
+  May: [100, 91, 129, 111, 110, 169, 175, 100, 21, 0, 0],
+  Jun: [163, 20, 88, 115, 106, 123, 179, 173, 17, 0, 0]
 };
 
 // ==========================================
@@ -238,54 +257,117 @@ let charts = {
 };
 
 // ==========================================
-// 4. INITIALIZATION
+// 4. INITIALIZATION & INDEXEDDB
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-  const storedData = localStorage.getItem('work_permit_audits_v2');
-  if (storedData) {
-    auditsDatabase = JSON.parse(storedData);
-  } else {
-    auditsDatabase = [
-      {
-        id: 'audit-sample-1',
-        permitNo: 'PTW-2026-0601',
-        permitType: 'Electrical/Instrument',
-        workArea: 'GSP#1',
-        date: '2026-01-10',
-        auditorName: 'สมชาย รักปลอดภัย',
-        auditorDept: 'GSP#1 Process (ปผ.)',
-        checklist: {
-          A1:'pass', A2:'pass', A3:'pass',
-          B1:'pass', B2:'pass',
-          C1:'pass', C2:'pass', C3:'pass',
-          D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'na',
-          E1:'pass', E2:'pass'
-        },
-        status: 'conformance',
-        remarks: 'ตรวจสอบผ่านเกณฑ์ทั้งหมด',
-        attachments: []
-      },
-      {
-        id: 'audit-sample-2',
-        permitNo: 'PTW-2026-0602',
-        permitType: 'Hot Work Class I',
-        workArea: 'Tank Farm',
-        date: '2026-02-14',
-        auditorName: 'วิชัย เฝ้าระวัง',
-        auditorDept: 'Tank Farm & CWWTP (คธ.)',
-        checklist: {
-          A1:'pass', A2:'pass', A3:'pass',
-          B1:'pass', B2:'pass',
-          C1:'pass', C2:'pass', C3:'fail',
-          D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'pass',
-          E1:'pass', E2:'pass'
-        },
-        status: 'non_conformance',
-        remarks: 'พบการตัดแยกระบบไม่ครบถ้วน (ข้อ C3) สั่งแก้ไขก่อนเริ่มงาน',
-        attachments: []
+const DB_NAME = 'WorkPermitDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'audits';
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
       }
-    ];
-    localStorage.setItem('work_permit_audits_v2', JSON.stringify(auditsDatabase));
+    };
+    request.onsuccess = (event) => resolve(event.target.result);
+    request.onerror = (event) => reject(event.target.error);
+  });
+}
+
+async function saveToDB(key, data) {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put(data, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadFromDB(key) {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function migrateLocalStorageToDB() {
+  const oldData = localStorage.getItem('work_permit_audits_v2');
+  if (oldData) {
+    try {
+      const parsed = JSON.parse(oldData);
+      await saveToDB('work_permit_audits_v2', parsed);
+      localStorage.removeItem('work_permit_audits_v2');
+      return parsed;
+    } catch(e) {
+      console.error('Migration error', e);
+    }
+  }
+  return null;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    let storedData = await loadFromDB('work_permit_audits_v2');
+    if (!storedData) {
+      storedData = await migrateLocalStorageToDB();
+    }
+    
+    if (storedData) {
+      auditsDatabase = storedData;
+    } else {
+      auditsDatabase = [
+        {
+          id: 'audit-sample-1',
+          permitNo: 'PTW-2026-0601',
+          permitType: 'Electrical/Instrument',
+          workArea: 'GSP#1',
+          date: '2026-01-10',
+          auditorName: 'สมชาย รักปลอดภัย',
+          auditorDept: 'GSP#1 Process (ปผ.)',
+          checklist: {
+            A1:'pass', A2:'pass', A3:'pass',
+            B1:'pass', B2:'pass',
+            C1:'pass', C2:'pass', C3:'pass',
+            D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'na',
+            E1:'pass', E2:'pass'
+          },
+          status: 'conformance',
+          remarks: 'ตรวจสอบผ่านเกณฑ์ทั้งหมด',
+          attachments: []
+        },
+        {
+          id: 'audit-sample-2',
+          permitNo: 'PTW-2026-0602',
+          permitType: 'Hot Work Class I',
+          workArea: 'Tank Farm',
+          date: '2026-02-14',
+          auditorName: 'วิชัย เฝ้าระวัง',
+          auditorDept: 'Tank Farm & CWWTP (คธ.)',
+          checklist: {
+            A1:'pass', A2:'pass', A3:'pass',
+            B1:'pass', B2:'pass',
+            C1:'pass', C2:'pass', C3:'fail',
+            D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'pass',
+            E1:'pass', E2:'pass'
+          },
+          status: 'non_conformance',
+          remarks: 'พบการตัดแยกระบบไม่ครบถ้วน (ข้อ C3) สั่งแก้ไขก่อนเริ่มงาน',
+          attachments: []
+        }
+      ];
+      await saveToDB('work_permit_audits_v2', auditsDatabase);
+    }
+  } catch (error) {
+    console.error('Failed to init DB', error);
   }
 
   // Load editable baseline from localStorage
@@ -847,7 +929,7 @@ function removeSafetyCategory(id) {
 // ==========================================
 // 8. FORM SUBMISSION & LOCALSTORAGE
 // ==========================================
-function handleFormSubmit(event) {
+async function handleFormSubmit(event) {
   event.preventDefault();
 
   const permitNo     = document.getElementById('input-permit-no').value.trim();
@@ -877,7 +959,7 @@ function handleFormSubmit(event) {
   auditsDatabase.unshift(newAudit);
   
   try {
-    localStorage.setItem('work_permit_audits_v2', JSON.stringify(auditsDatabase));
+    await saveToDB('work_permit_audits_v2', auditsDatabase);
 
     // Auto-sync กราฟ 3 และ 4 ให้แสดงเดือนของข้อมูลที่เพิ่งบันทึก
     const auditMonth = getMonthShortFromDate(date);
@@ -892,8 +974,8 @@ function handleFormSubmit(event) {
     resetForm();
   } catch (error) {
     auditsDatabase.shift(); // Remove the failed audit from array
-    showToast('ไม่สามารถบันทึกได้ เนื่องจากไฟล์รูปภาพทั้งหมดมีขนาดใหญ่เกินกว่าที่เบราว์เซอร์รองรับ กรุณาลดจำนวนรูป', 'error');
-    console.error("Storage error:", error);
+    showToast('ไม่สามารถบันทึกได้ กรุณาลองใหม่อีกครั้ง หรือลบรูปภาพบางส่วนออก', 'error');
+    console.error("DB Storage error:", error);
   }
 }
 
@@ -1019,13 +1101,20 @@ function renderHistoryTable(data) {
   lucide.createIcons();
 }
 
-function deleteAuditRecord(id) {
+async function deleteAuditRecord(id) {
   if (confirm('คุณต้องการลบบันทึกการตรวจประเมินรายการนี้ใช่หรือไม่?')) {
+    const backup = [...auditsDatabase];
     auditsDatabase = auditsDatabase.filter(audit => audit.id !== id);
-    localStorage.setItem('work_permit_audits_v2', JSON.stringify(auditsDatabase));
-    showToast('ลบประวัติการตรวจประเมินเรียบร้อย', 'warning');
-    applyFilters();
-    updateDashboard();
+    try {
+      await saveToDB('work_permit_audits_v2', auditsDatabase);
+      showToast('ลบประวัติการตรวจประเมินเรียบร้อย', 'warning');
+      applyFilters();
+      updateDashboard();
+    } catch(error) {
+      auditsDatabase = backup; // rollback on failure
+      showToast('ไม่สามารถลบข้อมูลได้', 'error');
+      console.error('DB Error on delete:', error);
+    }
   }
 }
 
@@ -1354,7 +1443,19 @@ function renderComposedChart(data) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { family: 'Prompt', size: 11 }, color: '#64748b' } },
-        tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1, titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' }, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%` } }
+        tooltip: {
+          backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1,
+          titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' },
+          callbacks: {
+            label: ctx => {
+              const baseText = ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%`;
+              if (ctx.datasetIndex === 0 || ctx.datasetIndex === 1) {
+                return [baseText, ` จำนวนตรวจจริง: ${data[ctx.dataIndex].inspect} ใบ`];
+              }
+              return baseText;
+            }
+          }
+        }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Prompt', weight: 'bold' } } },
@@ -1660,7 +1761,7 @@ function importFromExcel(event) {
   event.target.value = '';
 
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const data     = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
@@ -1772,7 +1873,13 @@ function importFromExcel(event) {
 
       if (newRecords.length > 0) {
         auditsDatabase = [...newRecords, ...auditsDatabase];
-        localStorage.setItem('work_permit_audits_v2', JSON.stringify(auditsDatabase));
+        
+        try {
+          await saveToDB('work_permit_audits_v2', auditsDatabase);
+        } catch(error) {
+          showToast('พบปัญหาในการบันทึกข้อมูลนำเข้า', 'error');
+          console.error(error);
+        }
         
         // Auto-sync month on Dashboard
         const latestImportMonth = getMonthShortFromDate(newRecords[0].date);
