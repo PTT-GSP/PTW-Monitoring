@@ -862,22 +862,37 @@ async function handleFormSubmit(event) {
   });
 
   try {
-    // 1. Upload files to Firebase Storage
+    // 1. Upload files to Google Drive via Apps Script
     const uploadedAttachments = [];
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxm-Y0zkHVaDfPgLILcdxLnMvTHKU9wCSxvSwKBjxpCw_F4Xf6VrmcuPXCedRZHPghi/exec";
+
     for (let i = 0; i < pendingFiles.length; i++) {
       const fileObj = pendingFiles[i];
-      const fileName = `audits/${Date.now()}_${i}_${fileObj.name}`;
-      const storageRef = storage.ref().child(fileName);
+      const fileName = `${Date.now()}_${fileObj.name}`;
       
-      const snapshot = await storageRef.putString(fileObj.data, 'data_url');
-      const downloadURL = await snapshot.ref.getDownloadURL();
-      
-      uploadedAttachments.push({
-        name: fileObj.name,
-        type: fileObj.type,
-        size: fileObj.size,
-        data: downloadURL // Use 'data' property to store URL so it's compatible with existing render code
+      const payload = {
+        base64: fileObj.data,
+        fileName: fileName,
+        mimeType: fileObj.type
+      };
+
+      const response = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        uploadedAttachments.push({
+          name: fileObj.name,
+          type: fileObj.type,
+          size: fileObj.size,
+          data: result.url
+        });
+      } else {
+        throw new Error('Upload to Drive failed: ' + result.message);
+      }
     }
 
     // 2. Save to Firestore
@@ -902,7 +917,7 @@ async function handleFormSubmit(event) {
     alert('ดำเนินการบันทึกผลการตรวจประเมินสำเร็จ');
     resetForm();
   } catch (error) {
-    showToast('ไม่สามารถบันทึกได้ กรุณาลองใหม่อีกครั้ง', 'error');
+    showToast('ไม่สามารถบันทึกได้: ' + error.message, 'error');
     console.error("Firebase save error:", error);
   }
 }
