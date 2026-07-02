@@ -864,7 +864,7 @@ async function handleFormSubmit(event) {
   try {
     // 1. Upload files to Google Drive via Apps Script
     const uploadedAttachments = [];
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw6y0aNpcaeZttKd1C9EIeRPD2e6vkQ-HG5y7OPAFO2JsOyiVDXPCr9OY1gFYEKejWC1w/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzmBznav8dP7d7zA-N5aXCwyiXigbYM8TRorogkvlS8-STJ7A1L5Udx_yO0bhtouC5FVw/exec";
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const fileObj = pendingFiles[i];
