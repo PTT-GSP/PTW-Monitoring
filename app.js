@@ -257,117 +257,27 @@ let charts = {
 };
 
 // ==========================================
-// 4. INITIALIZATION & INDEXEDDB
 // ==========================================
-const DB_NAME = 'WorkPermitDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'audits';
-
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-    request.onsuccess = (event) => resolve(event.target.result);
-    request.onerror = (event) => reject(event.target.error);
-  });
-}
-
-async function saveToDB(key, data) {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.put(data, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function loadFromDB(key) {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.get(key);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function migrateLocalStorageToDB() {
-  const oldData = localStorage.getItem('work_permit_audits_v2');
-  if (oldData) {
-    try {
-      const parsed = JSON.parse(oldData);
-      await saveToDB('work_permit_audits_v2', parsed);
-      localStorage.removeItem('work_permit_audits_v2');
-      return parsed;
-    } catch(e) {
-      console.error('Migration error', e);
-    }
-  }
-  return null;
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
+// 4. INITIALIZATION & FIREBASE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Real-time listener for Firestore
   try {
-    let storedData = await loadFromDB('work_permit_audits_v2');
-    if (!storedData) {
-      storedData = await migrateLocalStorageToDB();
-    }
-    
-    if (storedData) {
-      auditsDatabase = storedData;
-    } else {
-      auditsDatabase = [
-        {
-          id: 'audit-sample-1',
-          permitNo: 'PTW-2026-0601',
-          permitType: 'Electrical/Instrument',
-          workArea: 'GSP#1',
-          date: '2026-01-10',
-          auditorName: 'สมชาย รักปลอดภัย',
-          auditorDept: 'GSP#1 Process (ปผ.)',
-          checklist: {
-            A1:'pass', A2:'pass', A3:'pass',
-            B1:'pass', B2:'pass',
-            C1:'pass', C2:'pass', C3:'pass',
-            D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'na',
-            E1:'pass', E2:'pass'
-          },
-          status: 'conformance',
-          remarks: 'ตรวจสอบผ่านเกณฑ์ทั้งหมด',
-          attachments: []
-        },
-        {
-          id: 'audit-sample-2',
-          permitNo: 'PTW-2026-0602',
-          permitType: 'Hot Work Class I',
-          workArea: 'Tank Farm',
-          date: '2026-02-14',
-          auditorName: 'วิชัย เฝ้าระวัง',
-          auditorDept: 'Tank Farm & CWWTP (คธ.)',
-          checklist: {
-            A1:'pass', A2:'pass', A3:'pass',
-            B1:'pass', B2:'pass',
-            C1:'pass', C2:'pass', C3:'fail',
-            D1:'pass', D2:'pass', D3:'pass', D4:'pass', D5:'pass', D6:'pass', D7:'pass', D8:'pass',
-            E1:'pass', E2:'pass'
-          },
-          status: 'non_conformance',
-          remarks: 'พบการตัดแยกระบบไม่ครบถ้วน (ข้อ C3) สั่งแก้ไขก่อนเริ่มงาน',
-          attachments: []
-        }
-      ];
-      await saveToDB('work_permit_audits_v2', auditsDatabase);
-    }
+    db.collection('audits').orderBy('date', 'desc').onSnapshot((snapshot) => {
+      const newAudits = [];
+      snapshot.forEach(doc => {
+        newAudits.push({ id: doc.id, ...doc.data() });
+      });
+      auditsDatabase = newAudits;
+      
+      applyFilters();
+      updateDashboard();
+    }, (error) => {
+      console.error('Error fetching real-time data:', error);
+      showToast('ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+    });
   } catch (error) {
-    console.error('Failed to init DB', error);
+    console.error('Firebase Initialization failed:', error);
   }
 
   // Load editable baseline from localStorage
@@ -932,6 +842,8 @@ function removeSafetyCategory(id) {
 async function handleFormSubmit(event) {
   event.preventDefault();
 
+  showToast('กำลังบันทึกข้อมูลและอัปโหลดไฟล์...', 'info');
+
   const permitNo     = document.getElementById('input-permit-no').value.trim();
   const permitType   = document.getElementById('select-permit-type').value;
   const workArea     = document.getElementById('select-work-area').value;
@@ -949,17 +861,34 @@ async function handleFormSubmit(event) {
     });
   });
 
-  const newAudit = {
-    id: `audit-${Date.now()}`,
-    permitNo, permitType, workArea, date,
-    auditorName, auditorDept, checklist, status, remarks,
-    attachments: [...pendingFiles]
-  };
-
-  auditsDatabase.unshift(newAudit);
-  
   try {
-    await saveToDB('work_permit_audits_v2', auditsDatabase);
+    // 1. Upload files to Firebase Storage
+    const uploadedAttachments = [];
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const fileObj = pendingFiles[i];
+      const fileName = `audits/${Date.now()}_${i}_${fileObj.name}`;
+      const storageRef = storage.ref().child(fileName);
+      
+      const snapshot = await storageRef.putString(fileObj.data, 'data_url');
+      const downloadURL = await snapshot.ref.getDownloadURL();
+      
+      uploadedAttachments.push({
+        name: fileObj.name,
+        type: fileObj.type,
+        size: fileObj.size,
+        data: downloadURL // Use 'data' property to store URL so it's compatible with existing render code
+      });
+    }
+
+    // 2. Save to Firestore
+    const newAudit = {
+      permitNo, permitType, workArea, date,
+      auditorName, auditorDept, checklist, status, remarks,
+      attachments: uploadedAttachments,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('audits').add(newAudit);
 
     // Auto-sync กราฟ 3 และ 4 ให้แสดงเดือนของข้อมูลที่เพิ่งบันทึก
     const auditMonth = getMonthShortFromDate(date);
@@ -973,9 +902,8 @@ async function handleFormSubmit(event) {
     alert('ดำเนินการบันทึกผลการตรวจประเมินสำเร็จ');
     resetForm();
   } catch (error) {
-    auditsDatabase.shift(); // Remove the failed audit from array
-    showToast('ไม่สามารถบันทึกได้ กรุณาลองใหม่อีกครั้ง หรือลบรูปภาพบางส่วนออก', 'error');
-    console.error("DB Storage error:", error);
+    showToast('ไม่สามารถบันทึกได้ กรุณาลองใหม่อีกครั้ง', 'error');
+    console.error("Firebase save error:", error);
   }
 }
 
@@ -1103,17 +1031,13 @@ function renderHistoryTable(data) {
 
 async function deleteAuditRecord(id) {
   if (confirm('คุณต้องการลบบันทึกการตรวจประเมินรายการนี้ใช่หรือไม่?')) {
-    const backup = [...auditsDatabase];
-    auditsDatabase = auditsDatabase.filter(audit => audit.id !== id);
     try {
-      await saveToDB('work_permit_audits_v2', auditsDatabase);
+      await db.collection('audits').doc(id).delete();
       showToast('ลบประวัติการตรวจประเมินเรียบร้อย', 'warning');
-      applyFilters();
-      updateDashboard();
+      // note: onSnapshot will handle UI updates automatically
     } catch(error) {
-      auditsDatabase = backup; // rollback on failure
       showToast('ไม่สามารถลบข้อมูลได้', 'error');
-      console.error('DB Error on delete:', error);
+      console.error('Firebase Error on delete:', error);
     }
   }
 }
@@ -1872,15 +1796,19 @@ function importFromExcel(event) {
       });
 
       if (newRecords.length > 0) {
-        auditsDatabase = [...newRecords, ...auditsDatabase];
-        
+        showToast('กำลังนำเข้าข้อมูลสู่ระบบ กรุณารอสักครู่...', 'info');
         try {
-          await saveToDB('work_permit_audits_v2', auditsDatabase);
+          const batch = db.batch();
+          newRecords.forEach(record => {
+            const docRef = db.collection('audits').doc();
+            record.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            batch.set(docRef, record);
+          });
+          await batch.commit();
         } catch(error) {
           showToast('พบปัญหาในการบันทึกข้อมูลนำเข้า', 'error');
           console.error(error);
         }
-        
         // Auto-sync month on Dashboard
         const latestImportMonth = getMonthShortFromDate(newRecords[0].date);
         const validMonths = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
