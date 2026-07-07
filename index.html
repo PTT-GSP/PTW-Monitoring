@@ -6,7 +6,7 @@
   <meta name="description" content="ระบบบันทึกผลการตรวจประเมินใบอนุญาตทำงาน (Permit to Work Inspection) พร้อมระบบแดชบอร์ดสถิติความปลอดภัยแบบเรียลไทม์ และระบบส่งออกไฟล์ Excel">
   <title>Permit to Work Inspection System</title>
 
-  <link rel="stylesheet" href="style.css?v=1.0.2">
+  <link rel="stylesheet" href="style.css?v=1.0.3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -642,7 +642,15 @@
     const storage = firebase.storage();
   </script>
 
-  <script src="app.js?v=1.0.2"></script>
+  <script>
+    // เพิ่มระบบตรวจสอบ Error บนมือถือ (หากมี JS Crash จะแจ้งเตือนทันที)
+    window.onerror = function(message, source, lineno, colno, error) {
+      alert("ตรวจสอบพบปัญหาบนหน้าจอ: " + message + "\nไฟล์: " + source + "\nบรรทัดที่: " + lineno);
+      return false;
+    };
+  </script>
+
+  <script src="app.js?v=1.0.3"></script>
 
   <!-- ADD PR MODAL -->
   <div class="modal-overlay" id="add-pr-modal" onclick="closePrModal(event)">
