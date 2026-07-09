@@ -280,18 +280,54 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Firebase Initialization failed:', error);
   }
 
-  // Load editable baseline from localStorage
-  const savedBaseline = localStorage.getItem('ptw_baseline_settings');
-  if (savedBaseline) {
-    try {
-      const parsed = JSON.parse(savedBaseline);
-      // Merge: keep DEFAULT_BASELINE structure, overlay saved values
-      editableBaseline = DEFAULT_BASELINE.map(def => {
-        const saved = parsed.find(p => p.month === def.month);
-        return saved ? { ...def, ...saved } : { ...def };
-      });
-    } catch(e) {
-      editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
+  // Load editable baseline from Firestore (and fallback/migrate from localStorage)
+  try {
+    db.collection('settings').doc('baseline').onSnapshot(async (doc) => {
+      if (doc.exists) {
+        const parsed = doc.data().data;
+        editableBaseline = DEFAULT_BASELINE.map(def => {
+          const saved = parsed.find(p => p.month === def.month);
+          return saved ? { ...def, ...saved } : { ...def };
+        });
+        updateDashboard();
+      } else {
+        // Fallback to local storage (first-time migration)
+        const savedBaseline = localStorage.getItem('ptw_baseline_settings');
+        if (savedBaseline) {
+          try {
+            const parsed = JSON.parse(savedBaseline);
+            editableBaseline = DEFAULT_BASELINE.map(def => {
+              const saved = parsed.find(p => p.month === def.month);
+              return saved ? { ...def, ...saved } : { ...def };
+            });
+            updateDashboard();
+            
+            // Upload to Firestore for sharing
+            await db.collection('settings').doc('baseline').set({ data: editableBaseline });
+          } catch(e) {
+            editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
+          }
+        } else {
+          editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
+        }
+      }
+    }, (error) => {
+      console.error('Error fetching baseline settings from Firestore:', error);
+    });
+  } catch (error) {
+    console.error('Firestore baseline listener failed:', error);
+    // Fallback to localStorage if Firebase fails
+    const savedBaseline = localStorage.getItem('ptw_baseline_settings');
+    if (savedBaseline) {
+      try {
+        const parsed = JSON.parse(savedBaseline);
+        editableBaseline = DEFAULT_BASELINE.map(def => {
+          const saved = parsed.find(p => p.month === def.month);
+          return saved ? { ...def, ...saved } : { ...def };
+        });
+      } catch(e) {
+        editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
+      }
     }
   }
 
@@ -1681,17 +1717,23 @@ function closeDashboardEditor(event) {
   }
 }
 
-function saveDashboardSettings() {
+async function saveDashboardSettings() {
   editableBaseline.forEach((b, i) => {
     b.total   = parseInt(document.getElementById(`baseline-total-${i}`).value)   || 0;
     b.inspect = parseInt(document.getElementById(`baseline-inspect-${i}`).value) || 0;
     b.defect  = parseInt(document.getElementById(`baseline-defect-${i}`).value)  || 0;
   });
 
-  localStorage.setItem('ptw_baseline_settings', JSON.stringify(editableBaseline));
-  document.getElementById('dashboard-editor-modal').classList.remove('active');
-  updateDashboard();
-  showToast('บันทึกข้อมูลและอัปเดต Dashboard เรียบร้อย', 'success');
+  try {
+    await db.collection('settings').doc('baseline').set({ data: editableBaseline });
+    localStorage.setItem('ptw_baseline_settings', JSON.stringify(editableBaseline)); // Local backup
+    document.getElementById('dashboard-editor-modal').classList.remove('active');
+    updateDashboard();
+    showToast('บันทึกข้อมูลและอัปเดต Dashboard เรียบร้อย', 'success');
+  } catch(error) {
+    console.error('Error saving baseline to Firestore:', error);
+    showToast('ไม่สามารถบันทึกข้อมูลตั้งค่าได้', 'error');
+  }
 }
 
 // ==========================================
