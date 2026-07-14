@@ -205,6 +205,23 @@ const BASELINE_AREA_PERCENTAGES = {
     { area: 'วก.วบก.',             percentage: 235.0 },
     { area: 'ตร.วบก.',             percentage: 112.5 },
     { area: 'ปภ.ผยก.',             percentage: 102.5 },
+  ],
+  Jul: [
+    { area: 'GSP#1 Process (ปผ.)', percentage: 55.0 },
+    { area: 'GSP#1 Utility (ปผ.)', percentage: 72.5 },
+    { area: 'GSP#2 (ปผ.)',         percentage: 142.5 },
+    { area: 'GSP#3 (ปผ.)',         percentage: 87.5 },
+    { area: 'ESP (ปอ.)',           percentage: 85.0 },
+    { area: 'GSP#5 (ปต.)',         percentage: 115.0 },
+    { area: 'GSP#6 (ปล.)',         percentage: 92.5 },
+    { area: 'Tank Farm & CWWTP (คธ.)', percentage: 35.0 },
+    { area: 'GPPP (ปก.)',          percentage: 80.0 },
+    { area: 'บง.วบก.',             percentage: 87.5 },
+    { area: 'บค.วบก.',             percentage: 67.5 },
+    { area: 'บฟ.วบก.',             percentage: 47.5 },
+    { area: 'วก.วบก.',             percentage: 120.0 },
+    { area: 'ตร.วบก.',             percentage: 45.0 },
+    { area: 'ปภ.ผยก.',             percentage: 12.5 },
   ]
 };
 
@@ -220,7 +237,8 @@ const BASELINE_WORK_AREA_COUNTS = {
   Mar: [170, 74, 136, 101, 142, 105, 229, 90, 17, 0, 0],
   Apr: [135, 72, 110, 80, 109, 142, 153, 101, 17, 0, 0],
   May: [100, 91, 129, 111, 110, 169, 175, 100, 21, 0, 0],
-  Jun: [163, 20, 88, 115, 106, 123, 179, 173, 17, 0, 0]
+  Jun: [163, 20, 88, 115, 106, 123, 179, 173, 17, 0, 0],
+  Jul: [61, 63, 45, 45, 65, 58, 74, 37, 5, 0, 0]
 };
 
 // ==========================================
@@ -235,7 +253,7 @@ const DEFAULT_BASELINE = [
   { month: 'Apr', label: 'เม.ย. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'May', label: 'พ.ค. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'Jun', label: 'มิ.ย. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'Jul', label: 'ก.ค. 69', total: 0, inspect: 0, defect: 0 },
+  { month: 'Jul', label: 'ก.ค. 69', total: 0, inspect: 458, defect: 0 },
   { month: 'Aug', label: 'ส.ค. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'Sep', label: 'ก.ย. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'Oct', label: 'ต.ค. 69', total: 0, inspect: 0, defect: 0 },
@@ -245,9 +263,15 @@ let editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
 // ==========================================
 // 3. GLOBAL STATE
 // ==========================================
+function getCurrentMonthShort() {
+  const m = new Date().getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[m];
+}
+
 let auditsDatabase = [];
-let selectedMonth = 'Jan';
-let selectedWorkAreaMonth = 'all';
+let selectedMonth = getCurrentMonthShort();
+let selectedWorkAreaMonth = getCurrentMonthShort();
 let pendingFiles = [];
 let charts = {
   composed: null,
@@ -285,10 +309,24 @@ document.addEventListener('DOMContentLoaded', () => {
     db.collection('settings').doc('baseline').onSnapshot(async (doc) => {
       if (doc.exists) {
         const parsed = doc.data().data;
+        let needsUpdate = false;
         editableBaseline = DEFAULT_BASELINE.map(def => {
           const saved = parsed.find(p => p.month === def.month);
-          return saved ? { ...def, ...saved } : { ...def };
+          if (saved) {
+            if (saved.inspect === 0 && def.inspect > 0) {
+              saved.inspect = def.inspect;
+              needsUpdate = true;
+            }
+            return { ...def, ...saved };
+          }
+          needsUpdate = true;
+          return { ...def };
         });
+        if (needsUpdate) {
+          db.collection('settings').doc('baseline').set({ data: editableBaseline })
+            .then(() => console.log("Synced default baseline values to Firestore"))
+            .catch(err => console.error("Failed to sync default baselines:", err));
+        }
         updateDashboard();
       } else {
         // Fallback to local storage (first-time migration)
@@ -330,6 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   }
+
+  changeSelectedMonth(selectedMonth);
+  changeWorkAreaMonth(selectedWorkAreaMonth);
 
   setDefaultDateTime();
   renderChecklistForm();
@@ -1507,12 +1548,18 @@ function updateAuditorDeptChart() {
     counts     = areaData.map(d => d.actualCount);
     maxY       = 400;
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, '#06b6d4');
-    gradient.addColorStop(1, '#2563eb');
+    const blueGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    blueGradient.addColorStop(0, '#06b6d4');
+    blueGradient.addColorStop(1, '#2563eb');
+
+    const pinkGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    pinkGradient.addColorStop(0, '#f472b6');
+    pinkGradient.addColorStop(1, '#db2777');
+
+    const barColors = counts.map(c => c < 40 ? pinkGradient : blueGradient);
 
     datasets = [
-      { label: 'ร้อยละการดำเนินงานเทียบกับเป้าหมาย', data: percentages, backgroundColor: gradient, borderRadius: 8, barPercentage: 0.65, order: 1 },
+      { label: 'ร้อยละการดำเนินงานเทียบกับเป้าหมาย', data: percentages, backgroundColor: barColors, borderRadius: 8, barPercentage: 0.65, order: 1 },
       { label: 'เป้าหมายมาตรฐาน (100%)', type: 'line', data: Array(labels.length).fill(100), borderColor: '#f43f5e', borderWidth: 2, borderDash: [8, 4], pointRadius: 0, fill: false, order: 2 }
     ];
   } else {
@@ -1529,12 +1576,18 @@ function updateAuditorDeptChart() {
     percentages = counts.map(c => parseFloat(((c / FIXED_TARGET_COUNT) * 100).toFixed(2)));
     maxY        = 150;
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, '#a78bfa');
-    gradient.addColorStop(1, '#7c3aed');
+    const purpleGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    purpleGradient.addColorStop(0, '#a78bfa');
+    purpleGradient.addColorStop(1, '#7c3aed');
+
+    const pinkGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    pinkGradient.addColorStop(0, '#f472b6');
+    pinkGradient.addColorStop(1, '#db2777');
+
+    const barColors = counts.map(c => c < 40 ? pinkGradient : purpleGradient);
 
     datasets = [
-      { label: 'จำนวนตรวจจริง (ใบ)', data: counts, backgroundColor: gradient, borderRadius: 8, barPercentage: 0.65 },
+      { label: 'จำนวนตรวจจริง (ใบ)', data: counts, backgroundColor: barColors, borderRadius: 8, barPercentage: 0.65 },
       { label: 'เป้าหมาย (40 ใบ/เดือน)', type: 'line', data: Array(labels.length).fill(FIXED_TARGET_COUNT), borderColor: '#f43f5e', borderWidth: 2, borderDash: [8, 4], pointRadius: 0, fill: false }
     ];
   }
