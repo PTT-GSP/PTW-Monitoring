@@ -1112,6 +1112,9 @@ function renderHistoryTable(data) {
           <button class="btn btn-secondary btn-icon" onclick="openDetailsModal('${audit.id}')" title="ดูรายละเอียด">
             <i data-lucide="eye" style="width:16px;height:16px;"></i>
           </button>
+          <button class="btn btn-primary btn-icon" onclick="openEditModal('${audit.id}')" title="แก้ไขข้อมูล">
+            <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
+          </button>
           <button class="btn btn-danger btn-icon" onclick="deleteAuditRecord('${audit.id}')" title="ลบข้อมูล">
             <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
           </button>
@@ -1338,6 +1341,253 @@ function printModalContent() {
     <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
     </body></html>`);
   printWindow.document.close();
+}
+
+// ==========================================
+// 11A. EDIT AUDIT RECORD MODAL
+// ==========================================
+let editingAuditId = null;
+let editingAttachments = [];
+
+function openEditModal(auditId) {
+  const audit = auditsDatabase.find(a => a.id === auditId);
+  if (!audit) return;
+
+  editingAuditId = auditId;
+  editingAttachments = [...(audit.attachments || [])];
+
+  const modal = document.getElementById('edit-audit-modal');
+  const body  = document.getElementById('edit-modal-body-content');
+
+  // Clone option values from main form to prevent duplicates and keep synchronized
+  const permitTypeSelect = document.getElementById('select-permit-type').cloneNode(true);
+  permitTypeSelect.id = 'edit-permit-type';
+  permitTypeSelect.className = 'form-select';
+  permitTypeSelect.required = true;
+  permitTypeSelect.style.width = '100%';
+  permitTypeSelect.value = audit.permitType || '';
+
+  const workAreaSelect = document.getElementById('select-work-area').cloneNode(true);
+  workAreaSelect.id = 'edit-work-area';
+  workAreaSelect.className = 'form-select';
+  workAreaSelect.required = true;
+  workAreaSelect.style.width = '100%';
+  workAreaSelect.value = audit.workArea || '';
+
+  const auditorDeptSelect = document.getElementById('select-auditor-dept').cloneNode(true);
+  auditorDeptSelect.id = 'edit-auditor-dept';
+  auditorDeptSelect.className = 'form-select';
+  auditorDeptSelect.required = true;
+  auditorDeptSelect.style.width = '100%';
+  auditorDeptSelect.value = audit.auditorDept || '';
+
+  const statusSelect = document.getElementById('select-status').cloneNode(true);
+  statusSelect.id = 'edit-status';
+  statusSelect.className = 'form-select';
+  statusSelect.required = true;
+  statusSelect.style.width = '100%';
+  statusSelect.value = audit.status || '';
+
+  // Render checklist edit inputs
+  let checklistHtml = '';
+  CHECKLIST_DEFINITIONS.forEach(category => {
+    checklistHtml += `
+      <div class="card checklist-category-card" style="margin-top:15px; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+        <h3 class="checklist-category-header" style="display:flex; align-items:center; gap:8px; font-weight:700; color:var(--text-headings); font-size:1rem; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:10px;">
+          <i data-lucide="${category.icon}" style="width:18px;height:18px;color:var(--primary);"></i>
+          <span>${category.title}</span>
+        </h3>
+        <div class="checklist-container" style="display:flex; flex-direction:column; gap:12px;">
+    `;
+
+    category.items.forEach(item => {
+      const currentValue = (audit.checklist && audit.checklist[item.id]) || 'pass';
+      checklistHtml += `
+        <div class="checklist-item" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px dashed #f1f5f9;">
+          <span class="checklist-text" style="font-size:0.9rem; color:var(--text-body); max-width:60%;">${item.id}. ${item.text}</span>
+          <div class="radio-group" style="display:flex; gap:10px;">
+            <label class="radio-label" style="display:flex; align-items:center; gap:4px; font-size:0.85rem; cursor:pointer;">
+              <input type="radio" name="edit-chk-${item.id}" value="pass" ${currentValue === 'pass' ? 'checked' : ''}> สอดคล้อง
+            </label>
+            <label class="radio-label" style="display:flex; align-items:center; gap:4px; font-size:0.85rem; cursor:pointer; color:var(--danger);">
+              <input type="radio" name="edit-chk-${item.id}" value="fail" ${currentValue === 'fail' ? 'checked' : ''}> ไม่สอดคล้อง
+            </label>
+            <label class="radio-label" style="display:flex; align-items:center; gap:4px; font-size:0.85rem; cursor:pointer; color:var(--text-muted);">
+              <input type="radio" name="edit-chk-${item.id}" value="na" ${currentValue === 'na' ? 'checked' : ''}> N/A
+            </label>
+          </div>
+        </div>
+      `;
+    });
+
+    checklistHtml += `
+        </div>
+      </div>
+    `;
+  });
+
+  // Re-generate basic info form layout
+  const basicCard = document.createElement('div');
+  basicCard.className = 'card';
+  basicCard.style.padding = '20px';
+  basicCard.style.border = '1px solid var(--border-color)';
+  basicCard.style.borderRadius = '8px';
+  basicCard.innerHTML = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:1.1rem; color:var(--text-headings); margin-bottom:15px;">
+      <i data-lucide="file-text" style="color:var(--primary);"></i>
+      <span>ข้อมูลทั่วไปของใบอนุญาต</span>
+    </div>
+    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">เลขที่ใบอนุญาต (Permit No.) *</label>
+        <input type="text" id="edit-permit-no" class="form-input" value="${audit.permitNo || ''}" required style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">ประเภทใบอนุญาต *</label>
+        <div id="edit-permit-type-container"></div>
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">พื้นที่ปฏิบัติงาน *</label>
+        <div id="edit-work-area-container"></div>
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">วันที่ตรวจประเมิน *</label>
+        <input type="date" id="edit-date" class="form-input" value="${audit.date || ''}" required style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">ชื่อผู้ตรวจประเมิน *</label>
+        <input type="text" id="edit-auditor" class="form-input" value="${audit.auditorName || ''}" required style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">หน่วยงานผู้ตรวจประเมิน *</label>
+        <div id="edit-auditor-dept-container"></div>
+      </div>
+      <div class="form-group">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">สถานะการตรวจประเมิน *</label>
+        <div id="edit-status-container"></div>
+      </div>
+      <div class="form-group" style="grid-column: span 2;">
+        <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">ข้อสังเกต / คำแนะนำเพิ่มเติม</label>
+        <textarea id="edit-remarks" class="form-input" style="width:100%; height:80px; resize:vertical;">${audit.remarks || ''}</textarea>
+      </div>
+    </div>
+  `;
+
+  // Inject content to body
+  body.innerHTML = '';
+  body.appendChild(basicCard);
+
+  // Append selects
+  document.getElementById('edit-permit-type-container').appendChild(permitTypeSelect);
+  document.getElementById('edit-work-area-container').appendChild(workAreaSelect);
+  document.getElementById('edit-auditor-dept-container').appendChild(auditorDeptSelect);
+  document.getElementById('edit-status-container').appendChild(statusSelect);
+
+  // Append checklist
+  const checklistCard = document.createElement('div');
+  checklistCard.innerHTML = checklistHtml;
+  body.appendChild(checklistCard);
+
+  // Append attachments section
+  const attachmentsCard = document.createElement('div');
+  attachmentsCard.id = 'edit-attachments-card';
+  attachmentsCard.className = 'card';
+  attachmentsCard.style.padding = '20px';
+  attachmentsCard.style.marginTop = '15px';
+  attachmentsCard.style.border = '1px solid var(--border-color)';
+  attachmentsCard.style.borderRadius = '8px';
+  body.appendChild(attachmentsCard);
+
+  renderEditAttachments();
+
+  modal.classList.add('active');
+  lucide.createIcons();
+}
+
+function closeEditModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('edit-audit-modal').classList.remove('active');
+  editingAuditId = null;
+  editingAttachments = [];
+}
+
+function renderEditAttachments() {
+  const container = document.getElementById('edit-attachments-card');
+  if (!container) return;
+
+  let attachmentsHtml = `
+    <div class="card-title" style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:1.1rem; color:var(--text-headings); margin-bottom:15px;">
+      <i data-lucide="paperclip" style="color:var(--primary);"></i>
+      <span>จัดการไฟล์แนบเดิม (${editingAttachments.length} ไฟล์)</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+  `;
+
+  if (editingAttachments.length === 0) {
+    attachmentsHtml += `<div style="font-size:0.85rem; color:var(--text-muted);">ไม่มีไฟล์แนบในรายการตรวจนี้</div>`;
+  } else {
+    editingAttachments.forEach((file, index) => {
+      attachmentsHtml += `
+        <div class="attachment-edit-row" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:0.85rem;">
+          <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%; color:var(--text-body);">${file.name}</span>
+          <button type="button" class="btn btn-danger btn-icon" onclick="removeAttachmentFromEdit(${index})" style="padding:4px; height:auto; width:auto; border-radius:4px;" title="ลบไฟล์แนบนี้">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
+      `;
+    });
+  }
+
+  attachmentsHtml += `</div>`;
+  container.innerHTML = attachmentsHtml;
+  lucide.createIcons();
+}
+
+function removeAttachmentFromEdit(index) {
+  editingAttachments.splice(index, 1);
+  renderEditAttachments();
+}
+
+async function saveEditAudit() {
+  if (!editingAuditId) return;
+
+  const permitNo   = document.getElementById('edit-permit-no').value.trim();
+  const permitType = document.getElementById('edit-permit-type').value;
+  const workArea   = document.getElementById('edit-work-area').value;
+  const date       = document.getElementById('edit-date').value;
+  const auditorName= document.getElementById('edit-auditor').value.trim();
+  const auditorDept= document.getElementById('edit-auditor-dept').value;
+  const remarks    = document.getElementById('edit-remarks').value.trim();
+  const status     = document.getElementById('edit-status').value;
+
+  if (!permitNo || !permitType || !workArea || !date || !auditorName || !auditorDept || !status) {
+    showToast('กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน', 'warning');
+    return;
+  }
+
+  const checklist = {};
+  CHECKLIST_DEFINITIONS.forEach(category => {
+    category.items.forEach(item => {
+      const radio = document.querySelector(`input[name="edit-chk-${item.id}"]:checked`);
+      checklist[item.id] = radio ? radio.value : 'pass';
+    });
+  });
+
+  showToast('กำลังบันทึกการแก้ไข...', 'info');
+
+  try {
+    await db.collection('audits').doc(editingAuditId).update({
+      permitNo, permitType, workArea, date,
+      auditorName, auditorDept, checklist, status, remarks,
+      attachments: editingAttachments
+    });
+
+    showToast('แก้ไขบันทึกการตรวจประเมินสำเร็จ', 'success');
+    closeEditModal();
+  } catch(error) {
+    console.error('Failed to update audit record:', error);
+    showToast('ไม่สามารถบันทึกได้: ' + error.message, 'error');
+  }
 }
 
 // ==========================================
