@@ -1099,3 +1099,23 @@ body {
   background: #f1f5f9;
   border-color: var(--border-hover);
 }
+
+/* ==========================================================================
+   PAGINATION (History Table)
+   ========================================================================== */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-headings);
+  font-family: 'Prompt', sans-serif;
+}

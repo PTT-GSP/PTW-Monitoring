@@ -272,6 +272,12 @@ function getCurrentMonthShort() {
 let auditsDatabase = [];
 let selectedMonth = getCurrentMonthShort();
 let selectedWorkAreaMonth = getCurrentMonthShort();
+
+// Pagination State for History Table
+let filteredHistoryData = [];
+let historyCurrentPage = 1;
+const historyItemsPerPage = 20;
+
 let pendingFiles = [];
 let charts = {
   composed: null,
@@ -1037,6 +1043,7 @@ function getMonthShortFromDate(dateStr) {
 // 9. DATA GRID & FILTERS (HISTORY TAB)
 // ==========================================
 function applyFilters() {
+  historyCurrentPage = 1;
   const searchQuery = document.getElementById('filter-search').value.toLowerCase();
   const area        = document.getElementById('filter-area').value;
   const status      = document.getElementById('filter-status').value;
@@ -1056,7 +1063,8 @@ function applyFilters() {
     return matchSearch && matchArea && matchStatus && matchDate;
   });
 
-  renderHistoryTable(filtered);
+  filteredHistoryData = filtered;
+  renderHistoryTable();
 }
 
 function clearFilters() {
@@ -1067,23 +1075,36 @@ function clearFilters() {
   applyFilters();
 }
 
-function renderHistoryTable(data) {
+function renderHistoryTable() {
   const tbody          = document.getElementById('audits-table-body');
   const emptyIndicator = document.getElementById('no-data-indicator');
   const table          = document.getElementById('audits-table');
+  const pagination     = document.getElementById('history-pagination');
 
   tbody.innerHTML = '';
 
-  if (data.length === 0) {
+  if (filteredHistoryData.length === 0) {
     emptyIndicator.style.display = 'block';
     table.style.display = 'none';
+    pagination.style.display = 'none';
     return;
   }
 
   emptyIndicator.style.display = 'none';
   table.style.display = 'table';
 
-  data.forEach(audit => {
+  const totalItems = filteredHistoryData.length;
+  const totalPages = Math.ceil(totalItems / historyItemsPerPage);
+
+  if (historyCurrentPage < 1) historyCurrentPage = 1;
+  if (historyCurrentPage > totalPages) historyCurrentPage = totalPages;
+
+  const startIndex = (historyCurrentPage - 1) * historyItemsPerPage;
+  const endIndex   = Math.min(startIndex + historyItemsPerPage, totalItems);
+
+  const pageData = filteredHistoryData.slice(startIndex, endIndex);
+
+  pageData.forEach(audit => {
     const tr = document.createElement('tr');
 
     const statusBadge = audit.status === 'conformance'
@@ -1124,7 +1145,27 @@ function renderHistoryTable(data) {
     tbody.appendChild(tr);
   });
 
+  if (totalPages > 1) {
+    pagination.style.display = 'flex';
+    document.getElementById('pagination-info').textContent = `หน้า ${historyCurrentPage} / ${totalPages} (ทั้งหมด ${totalItems} รายการ)`;
+    document.getElementById('btn-prev-page').disabled = (historyCurrentPage === 1);
+    document.getElementById('btn-next-page').disabled = (historyCurrentPage === totalPages);
+  } else {
+    pagination.style.display = 'none';
+  }
+
   lucide.createIcons();
+}
+
+function changeHistoryPage(direction) {
+  const totalPages = Math.ceil(filteredHistoryData.length / historyItemsPerPage);
+  const targetPage = historyCurrentPage + direction;
+  if (targetPage >= 1 && targetPage <= totalPages) {
+    historyCurrentPage = targetPage;
+    renderHistoryTable();
+    // เลื่อนหน้าจอขึ้นมาที่ขอบบนของตาราง
+    document.getElementById('audits-table').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 async function deleteAuditRecord(id) {
