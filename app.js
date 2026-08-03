@@ -1677,7 +1677,7 @@ function updateDashboard() {
 
   const currentOverall = activeMonths.map(base => {
     const added  = dynamicMonthlyCounts[base.month] ? dynamicMonthlyCounts[base.month].inspect : 0;
-    const newIns = base.inspect + added;
+    const newIns = Math.max(base.inspect, added);
     const pct    = base.total > 0 ? (newIns / base.total) * 100 : 0;
     return { month: base.month, label: base.label, total: base.total, inspect: newIns, percentage: parseFloat(pct.toFixed(2)) };
   });
@@ -1686,7 +1686,7 @@ function updateDashboard() {
     const overall   = currentOverall.find(o => o.month === base.month);
     const totalIns  = overall ? overall.inspect : 0;
     const addedDef  = dynamicMonthlyCounts[base.month] ? dynamicMonthlyCounts[base.month].defect : 0;
-    const newDef    = base.defect + addedDef;
+    const newDef    = Math.max(base.defect, addedDef);
     const defRate   = totalIns > 0 ? (newDef / totalIns) * 100 : 0;
     return { month: base.month, defectCount: newDef, defectRate: parseFloat(defRate.toFixed(2)) };
   });
@@ -1901,6 +1901,86 @@ function updateAuditorDeptChart() {
           callbacks: {
             title: ctx => ctx[0].label,
             label: ctx => {
+              const count = counts[ctx.dataIndex];
+              const pct   = percentages[ctx.dataIndex];
+              return ` จำนวนตรวจจริง: ${count} ใบ (${pct}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Prompt', size: 9 } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { family: 'Prompt' } }, min: 0, max: maxY }
+      }
+    }
+  });
+}
+
+function openDashboardEditor() {
+  const modal = document.getElementById('dashboard-editor-modal');
+  const container = document.getElementById('dashboard-editor-table');
+
+  // Count recorded audits and defects per month
+  const dbCounts = {};
+  editableBaseline.forEach(b => { dbCounts[b.month] = { inspect: 0, defect: 0 }; });
+  auditsDatabase.forEach(audit => {
+    const month = getMonthShortFromDate(audit.date);
+    if (dbCounts.hasOwnProperty(month)) {
+      dbCounts[month].inspect++;
+      if (audit.status === 'non_conformance') dbCounts[month].defect++;
+    }
+  });
+
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th style="padding:12px 16px;text-align:left;font-weight:800;font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);">เดือน</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800;font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);"><span style="display:flex;flex-direction:column;align-items:center;gap:2px;">ใบ PTW ทั้งหมด</span></th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800;font-size:0.75rem;color:#2563eb;text-transform:uppercase;border-bottom:2px solid var(--border-color);">สุ่มตรวจแล้ว (ใบ)</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800;font-size:0.75rem;color:#ef4444;text-transform:uppercase;border-bottom:2px solid var(--border-color);">Non-Conformance (ใบ)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${editableBaseline.map((b, i) => {
+          const dbInspect = dbCounts[b.month].inspect;
+          const dbDefect = dbCounts[b.month].defect;
+          
+          // Auto-prefill if database count is > 0 and baseline is 0 or less than db count
+          const isDbActive = dbInspect > 0 && b.inspect <= dbInspect;
+          const displayInspect = isDbActive ? dbInspect : b.inspect;
+          const displayDefect = isDbActive ? dbDefect : b.defect;
+
+          return `
+            <tr style="border-bottom:1px solid var(--border-color);${b.total===0 && displayInspect===0 ? 'background:#fffbeb;' : ''}">
+              <td style="padding:10px 16px;font-weight:700;color:var(--text-headings);white-space:nowrap;">
+                ${b.label}
+                ${b.total===0 && displayInspect===0 ? '<span style="font-size:0.65rem;background:#fef3c7;color:#b45309;padding:1px 8px;border-radius:50px;border:1px solid #fde68a;margin-left:6px;font-weight:700;">ยังไม่มีข้อมูล</span>' : ''}
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-total-${i}" value="${b.total}" min="0"
+                  style="width:100%;text-align:center;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;">
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-inspect-${i}" value="${displayInspect}" min="0"
+                  style="width:100%;text-align:center;border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#eff6ff;">
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-defect-${i}" value="${displayDefect}" min="0"
+                  style="width:100%;text-align:center;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#fff5f5;">
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;text-align:right;">
+      * ข้อมูลสุ่มตรวจแล้ว (ใบ) และ Non-Conformance จะดึงค่าเริ่มต้นมาจากสถิติสุ่มตรวจจริงในฐานข้อมูลคลาวด์โดยอัตโนมัติ (แต่ยังคงแก้ไขแมนนวลปรับเปลี่ยนได้ตามปกติ)
+    </p>
+  `;ily: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' },
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => {
               if (ctx.datasetIndex === 0) {
                 if (hasBaseline) return [` ร้อยละ: ${percentages[ctx.dataIndex].toFixed(2)}%`, ` จำนวนจริง: ${counts[ctx.dataIndex]} ใบ (เป้า ${FIXED_TARGET_COUNT} ใบ/เดือน)`];
                 return ` จำนวน: ${counts[ctx.dataIndex]} ใบ`;
@@ -2018,6 +2098,17 @@ function openDashboardEditor() {
   const modal = document.getElementById('dashboard-editor-modal');
   const container = document.getElementById('dashboard-editor-table');
 
+  // Count recorded audits and defects per month
+  const dbCounts = {};
+  editableBaseline.forEach(b => { dbCounts[b.month] = { inspect: 0, defect: 0 }; });
+  auditsDatabase.forEach(audit => {
+    const month = getMonthShortFromDate(audit.date);
+    if (dbCounts.hasOwnProperty(month)) {
+      dbCounts[month].inspect++;
+      if (audit.status === 'non_conformance') dbCounts[month].defect++;
+    }
+  });
+
   container.innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
       <thead>
@@ -2029,30 +2120,41 @@ function openDashboardEditor() {
         </tr>
       </thead>
       <tbody>
-        ${editableBaseline.map((b, i) => `
-          <tr style="border-bottom:1px solid var(--border-color);${b.total===0 && b.inspect===0 ? 'background:#fffbeb;' : ''}">
-            <td style="padding:10px 16px;font-weight:700;color:var(--text-headings);">
-              ${b.label}
-              ${b.total===0 && b.inspect===0 ? '<span style="font-size:0.65rem;background:#fef3c7;color:#b45309;padding:1px 8px;border-radius:50px;border:1px solid #fde68a;margin-left:6px;font-weight:700;">ยังไม่มีข้อมูล</span>' : ''}
-            </td>
-            <td style="padding:8px 12px;">
-              <input type="number" id="baseline-total-${i}" value="${b.total}" min="0"
-                style="width:100%;text-align:center;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;">
-            </td>
-            <td style="padding:8px 12px;">
-              <input type="number" id="baseline-inspect-${i}" value="${b.inspect}" min="0"
-                style="width:100%;text-align:center;border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#eff6ff;">
-            </td>
-            <td style="padding:8px 12px;">
-              <input type="number" id="baseline-defect-${i}" value="${b.defect}" min="0"
-                style="width:100%;text-align:center;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#fff5f5;">
-            </td>
-          </tr>
-        `).join('')}
+        ${editableBaseline.map((b, i) => {
+          const dbInspect = dbCounts[b.month].inspect;
+          const dbDefect = dbCounts[b.month].defect;
+          
+          // Auto-active if we have DB records and the database count matches or exceeds the baseline
+          const isDbActive = dbInspect > 0 && b.inspect <= dbInspect;
+          const displayInspect = isDbActive ? dbInspect : b.inspect;
+          const displayDefect = isDbActive ? dbDefect : b.defect;
+
+          return `
+            <tr style="border-bottom:1px solid var(--border-color);${b.total===0 && displayInspect===0 ? 'background:#fffbeb;' : ''}">
+              <td style="padding:10px 16px;font-weight:700;color:var(--text-headings);white-space:nowrap;">
+                ${b.label}
+                ${b.total===0 && displayInspect===0 ? '<span style="font-size:0.65rem;background:#fef3c7;color:#b45309;padding:1px 8px;border-radius:50px;border:1px solid #fde68a;margin-left:6px;font-weight:700;">ยังไม่มีข้อมูล</span>' : ''}
+                ${isDbActive ? '<span style="font-size:0.65rem;background:#dbeafe;color:#1e40af;padding:1px 8px;border-radius:50px;border:1px solid #bfdbfe;margin-left:6px;font-weight:700;">Auto</span>' : ''}
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-total-${i}" value="${b.total}" min="0"
+                  style="width:100%;text-align:center;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;">
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-inspect-${i}" value="${displayInspect}" min="0" ${isDbActive ? 'readonly tabindex="-1"' : ''}
+                  style="width:100%;text-align:center;border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:${isDbActive ? '#f1f5f9' : '#eff6ff'};color:${isDbActive ? '#64748b' : 'inherit'};cursor:${isDbActive ? 'not-allowed' : 'text'};">
+              </td>
+              <td style="padding:8px 12px;">
+                <input type="number" id="baseline-defect-${i}" value="${displayDefect}" min="0" ${isDbActive ? 'readonly tabindex="-1"' : ''}
+                  style="width:100%;text-align:center;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:${isDbActive ? '#f1f5f9' : '#fff5f5'};color:${isDbActive ? '#64748b' : 'inherit'};cursor:${isDbActive ? 'not-allowed' : 'text'};">
+              </td>
+            </tr>
+          `;
+        }).join('')}
       </tbody>
     </table>
     <p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;text-align:right;">
-      * เดือนที่ข้อมูลใบ PTW ทั้งหมด = 0 จะไม่แสดงในกราฟจนกว่าจะมีข้อมูลในหน้าประวัติ
+      * แถวที่มีป้ายกำกับ <span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-weight:700;font-size:0.65rem;">Auto</span> คือจำนวนสุ่มตรวจจริงและ Non-Conformance ที่คำนวณจากประวัติการตรวจในระบบโดยอัตโนมัติ (ไม่สามารถแก้ไขแมนนวลได้)
     </p>
   `;
 
