@@ -221,7 +221,24 @@ const BASELINE_AREA_PERCENTAGES = {
     { area: 'บฟ.วบก.',             percentage: 50.0 },
     { area: 'วก.วบก.',             percentage: 120.0 },
     { area: 'ตร.วบก.',             percentage: 45.0 },
-    { area: 'ปภ.ผยก.',             percentage: 12.5 },
+    { area: 'ปภ.ผยก.',             percentage: 62.5 },
+  ],
+  Aug: [
+    { area: 'GSP#1 Process (ปผ.)', percentage: 0.0 },
+    { area: 'GSP#1 Utility (ปผ.)', percentage: 0.0 },
+    { area: 'GSP#2 (ปผ.)',         percentage: 0.0 },
+    { area: 'GSP#3 (ปผ.)',         percentage: 0.0 },
+    { area: 'ESP (ปอ.)',           percentage: 0.0 },
+    { area: 'GSP#5 (ปต.)',         percentage: 0.0 },
+    { area: 'GSP#6 (ปล.)',         percentage: 0.0 },
+    { area: 'Tank Farm & CWWTP (คธ.)', percentage: 0.0 },
+    { area: 'GPPP (ปก.)',          percentage: 10.0 },
+    { area: 'บง.วบก.',             percentage: 0.0 },
+    { area: 'บค.วบก.',             percentage: 0.0 },
+    { area: 'บฟ.วบก.',             percentage: 0.0 },
+    { area: 'วก.วบก.',             percentage: 0.0 },
+    { area: 'ตร.วบก.',             percentage: 0.0 },
+    { area: 'ปภ.ผยก.',             percentage: 0.0 },
   ]
 };
 
@@ -238,7 +255,8 @@ const BASELINE_WORK_AREA_COUNTS = {
   Apr: [135, 72, 110, 80, 109, 142, 153, 101, 17, 0, 0],
   May: [100, 91, 129, 111, 110, 169, 175, 100, 21, 0, 0],
   Jun: [163, 20, 88, 115, 106, 123, 179, 173, 17, 0, 0],
-  Jul: [98, 67, 45, 53, 82, 64, 84, 42, 5, 0, 0]
+  Jul: [98, 67, 45, 53, 92, 74, 84, 42, 5, 0, 0],
+  Aug: [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0]
 };
 
 // ==========================================
@@ -253,8 +271,8 @@ const DEFAULT_BASELINE = [
   { month: 'Apr', label: 'เม.ย. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'May', label: 'พ.ค. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'Jun', label: 'มิ.ย. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'Jul', label: 'ก.ค. 69', total: 0, inspect: 567, defect: 0 },
-  { month: 'Aug', label: 'ส.ค. 69', total: 0, inspect: 0, defect: 0 },
+  { month: 'Jul', label: 'ก.ค. 69', total: 0, inspect: 587, defect: 0 },
+  { month: 'Aug', label: 'ส.ค. 69', total: 0, inspect: 4,   defect: 0 },
   { month: 'Sep', label: 'ก.ย. 69', total: 0, inspect: 0, defect: 0 },
   { month: 'Oct', label: 'ต.ค. 69', total: 0, inspect: 0, defect: 0 },
 ];
@@ -323,9 +341,14 @@ document.addEventListener('DOMContentLoaded', () => {
               saved.inspect = def.inspect;
               needsUpdate = true;
             }
-            // Force migration update for July baseline if it is not yet updated to 567
-            if (saved.month === 'Jul' && saved.inspect < 567) {
-              saved.inspect = 567;
+            // Force migration update for July baseline if it is not yet updated to 587
+            if (saved.month === 'Jul' && saved.inspect < 587) {
+              saved.inspect = 587;
+              needsUpdate = true;
+            }
+            // Force migration update for August baseline if it is not yet updated to 4
+            if (saved.month === 'Aug' && saved.inspect < 4) {
+              saved.inspect = 4;
               needsUpdate = true;
             }
             return { ...def, ...saved };
