@@ -2423,7 +2423,7 @@ function updateTaDashboard() {
 
   // Calculate daily achievement rate (target = 7 per department, 7 departments = 49 total)
   const DEPT_TARGET = 7;
-  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'ปล.ยยก.', 'ปภ.ผยก.'];
+  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
   const dailyTarget = TA_DEPTS.length * DEPT_TARGET; // 49
   const dailyAchievement = parseFloat(((dailyTaCount / dailyTarget) * 100).toFixed(2));
 
@@ -2458,8 +2458,8 @@ function updateTaDashboard() {
   TA_DEPTS.forEach(d => { deptCounts[d] = 0; });
   dailyTaAudits.forEach(a => {
     let dept = a.auditorDept;
-    if (dept === 'GSP#6 (ปล.)') {
-      dept = 'ปล.ยยก.';
+    if (dept === 'ปล.ยยก.') {
+      dept = 'GSP#6 (ปล.)';
     }
     if (dept && deptCounts.hasOwnProperty(dept)) {
       deptCounts[dept]++;
@@ -2563,13 +2563,13 @@ function exportTaDailyData() {
   const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
   const dailyTaAudits = taAudits.filter(a => a.date === dateVal);
 
-  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'ปล.ยยก.', 'ปภ.ผยก.'];
+  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
   const deptCounts = {};
   TA_DEPTS.forEach(d => { deptCounts[d] = 0; });
   dailyTaAudits.forEach(a => {
     let dept = a.auditorDept;
-    if (dept === 'GSP#6 (ปล.)') {
-      dept = 'ปล.ยยก.';
+    if (dept === 'ปล.ยยก.') {
+      dept = 'GSP#6 (ปล.)';
     }
     if (dept && deptCounts.hasOwnProperty(dept)) {
       deptCounts[dept]++;
