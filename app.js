@@ -268,13 +268,13 @@ const DEFAULT_BASELINE = [
   { month: 'Jan', label: 'ม.ค. 69', total: 5931, inspect: 950,  defect: 0 },
   { month: 'Feb', label: 'ก.พ. 69', total: 6272, inspect: 1001, defect: 1 },
   { month: 'Mar', label: 'มี.ค. 69', total: 6907, inspect: 1050, defect: 1 },
-  { month: 'Apr', label: 'เม.ย. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'May', label: 'พ.ค. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'Jun', label: 'มิ.ย. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'Jul', label: 'ก.ค. 69', total: 0, inspect: 587, defect: 0 },
-  { month: 'Aug', label: 'ส.ค. 69', total: 0, inspect: 4,   defect: 0 },
-  { month: 'Sep', label: 'ก.ย. 69', total: 0, inspect: 0, defect: 0 },
-  { month: 'Oct', label: 'ต.ค. 69', total: 0, inspect: 0, defect: 0 },
+  { month: 'Apr', label: 'เม.ย. 69', total: 0,    inspect: 921,  defect: 0 },
+  { month: 'May', label: 'พ.ค. 69', total: 0,    inspect: 1020, defect: 0 },
+  { month: 'Jun', label: 'มิ.ย. 69', total: 0,    inspect: 984,  defect: 0 },
+  { month: 'Jul', label: 'ก.ค. 69', total: 0,    inspect: 587,  defect: 0 },
+  { month: 'Aug', label: 'ส.ค. 69', total: 0,    inspect: 4,    defect: 0 },
+  { month: 'Sep', label: 'ก.ย. 69', total: 0,    inspect: 0,    defect: 0 },
+  { month: 'Oct', label: 'ต.ค. 69', total: 0,    inspect: 0,    defect: 0 },
 ];
 let editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
 
@@ -320,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       applyFilters();
       updateDashboard();
+      updateTaDashboard();
     }, (error) => {
       console.error('Error fetching real-time data:', error);
       showToast('ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
@@ -411,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   applyFilters();
   updateDashboard();
+  updateTaDashboard();
   initSafetySection();
 });
 
@@ -578,11 +580,13 @@ function switchTab(tabId) {
 
   if (tabId === 'dashboard') updateDashboard();
   else if (tabId === 'history') applyFilters();
+  else if (tabId === 'ta-dashboard') updateTaDashboard();
 
   const headingText = document.getElementById('heading-text');
   if (headingText) {
     if (tabId === 'dashboard') headingText.textContent = 'Permit to Work Inspection Dashboard';
     else if (tabId === 'safety') headingText.textContent = 'Safety Information';
+    else if (tabId === 'ta-dashboard') headingText.innerHTML = 'สถิติการตรวจประเมินใบอนุญาตทำงาน<br>ช่วงซ่อมบำรุงใหญ่ (TA)';
     else headingText.textContent = 'Permit to Work Inspection';
   }
 
@@ -1267,6 +1271,95 @@ function exportToExcel() {
 }
 
 // ==========================================
+// 10A. EXPORT AUDITOR DEPT STATISTICS TO EXCEL
+// ==========================================
+function exportAuditorDeptData() {
+  if (auditsDatabase.length === 0 && !BASELINE_AREA_PERCENTAGES[selectedMonth]) {
+    showToast('ไม่มีข้อมูลหน่วยงานผู้ตรวจเพื่อส่งออก', 'error');
+    return;
+  }
+
+  const hasBaseline = !!BASELINE_AREA_PERCENTAGES[selectedMonth];
+  const DEPT_LIST   = BASELINE_AREA_PERCENTAGES['Jan'].map(d => d.area);
+
+  const rows = [];
+  const monthNamesTh = {
+    Nov: 'พฤศจิกายน', Dec: 'ธันวาคม', Jan: 'มกราคม', Feb: 'กุมภาพันธ์',
+    Mar: 'มีนาคม', Apr: 'เมษายน', May: 'พฤษภาคม', Jun: 'มิถุนายน',
+    Jul: 'กรกฎาคม', Aug: 'สิงหาคม', Sep: 'กันยายน', Oct: 'ตุลาคม'
+  };
+  const thMonth = monthNamesTh[selectedMonth] || selectedMonth;
+
+  if (hasBaseline) {
+    const areaData = BASELINE_AREA_PERCENTAGES[selectedMonth].map(item => ({
+      area: item.area,
+      percentage: item.percentage,
+      actualCount: Math.round((item.percentage / 100) * FIXED_TARGET_COUNT)
+    }));
+    auditsDatabase.forEach(audit => {
+      if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept) {
+        const match = areaData.find(a => a.area === audit.auditorDept);
+        if (match) {
+          match.actualCount++;
+          match.percentage = parseFloat(((match.actualCount / FIXED_TARGET_COUNT) * 100).toFixed(2));
+        }
+      }
+    });
+
+    areaData.forEach(d => {
+      rows.push({
+        'เดือน': thMonth,
+        'หน่วยงานผู้ตรวจ': d.area,
+        'จำนวนตรวจจริง (ใบ)': d.actualCount,
+        'เป้าหมายการตรวจ (ใบ)': FIXED_TARGET_COUNT,
+        'ร้อยละเทียบกับเป้าหมาย (%)': d.percentage
+      });
+    });
+  } else {
+    const deptCounts = {};
+    DEPT_LIST.forEach(d => { deptCounts[d] = 0; });
+    auditsDatabase.forEach(audit => {
+      if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept && deptCounts.hasOwnProperty(audit.auditorDept)) {
+        deptCounts[audit.auditorDept]++;
+      }
+    });
+
+    DEPT_LIST.forEach(d => {
+      const count = deptCounts[d];
+      const pct = parseFloat(((count / FIXED_TARGET_COUNT) * 100).toFixed(2));
+      rows.push({
+        'เดือน': thMonth,
+        'หน่วยงานผู้ตรวจ': d,
+        'จำนวนตรวจจริง (ใบ)': count,
+        'เป้าหมายการตรวจ (ใบ)': FIXED_TARGET_COUNT,
+        'ร้อยละเทียบกับเป้าหมาย (%)': pct
+      });
+    });
+  }
+
+  // Create SheetJS workbook and sheet
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook  = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Auditor Dept Inspections');
+
+  // Format column widths
+  const maxProps = {};
+  rows.forEach(row => {
+    Object.keys(row).forEach(key => {
+      const length = String(row[key] || '').length + 4;
+      maxProps[key] = Math.max(maxProps[key] || 10, length, key.length + 4);
+    });
+  });
+  worksheet['!cols'] = Object.keys(maxProps).map(key => ({ wch: Math.min(maxProps[key], 50) }));
+
+  // File write
+  const fileDateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(workbook, `PTW_Auditor_Dept_Inspections_${selectedMonth}_${fileDateStr}.xlsx`);
+  showToast(`ส่งออกข้อมูลหน่วยงานประจำเดือน ${thMonth} เรียบร้อย`, 'success');
+}
+
+
+// ==========================================
 // 11. DETAILS MODAL
 // ==========================================
 function openDetailsModal(auditId) {
@@ -1693,9 +1786,9 @@ function updateDashboard() {
     }
   });
 
-  // Only show months with data (total > 0 OR recorded audits > 0)
+  // Only show months with data (total > 0 OR baseline inspect > 0 OR recorded audits > 0)
   const activeMonths = editableBaseline.filter(b =>
-    b.total > 0 || (dynamicMonthlyCounts[b.month] && dynamicMonthlyCounts[b.month].inspect > 0)
+    b.total > 0 || b.inspect > 0 || (dynamicMonthlyCounts[b.month] && dynamicMonthlyCounts[b.month].inspect > 0)
   );
 
   const currentOverall = activeMonths.map(base => {
@@ -2288,4 +2381,253 @@ function importFromExcel(event) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ==========================================
+// 12. TURNAROUND (TA) DASHBOARD & REPORTING
+// ==========================================
+let taCharts = {
+  dept: null
+};
+
+function updateTaDashboard() {
+  const dateInput = document.getElementById('ta-date-filter');
+  if (!dateInput) return;
+
+  // If date input has no value, set it to the latest date with TA data or today
+  let selectedDate = dateInput.value;
+  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+
+  if (!selectedDate) {
+    if (taAudits.length > 0) {
+      // Find the latest date among TA audits
+      const dates = taAudits.map(a => a.date).sort();
+      selectedDate = dates[dates.length - 1];
+    } else {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      selectedDate = `${year}-${month}-${day}`;
+    }
+    dateInput.value = selectedDate;
+  }
+
+  // Filter TA audits for the selected date
+  const dailyTaAudits = taAudits.filter(a => a.date === selectedDate);
+  const totalTaCount = taAudits.length;
+  const dailyTaCount = dailyTaAudits.length;
+  
+  // Counts of defects accumulated (YTD)
+  const totalTaDefects = taAudits.filter(a => a.status === 'non_conformance').length;
+
+  // Calculate daily achievement rate (target = 7 per department, 7 departments = 49 total)
+  const DEPT_TARGET = 7;
+  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'ปล.ยยก.', 'ปภ.ผยก.'];
+  const dailyTarget = TA_DEPTS.length * DEPT_TARGET; // 49
+  const dailyAchievement = parseFloat(((dailyTaCount / dailyTarget) * 100).toFixed(2));
+
+  // Update KPI Metrics UI
+  document.getElementById('ta-kpi-total-inspect').textContent = `${totalTaCount} ใบงาน`;
+  document.getElementById('ta-kpi-today-inspect').textContent = `${dailyTaCount} / ${dailyTarget} ใบงาน`;
+  
+  const defectEl = document.getElementById('ta-kpi-defect-count');
+  if (defectEl) defectEl.textContent = `${totalTaDefects} ใบงาน`;
+  
+  const pctEl = document.getElementById('ta-kpi-pct-achievement');
+  if (pctEl) pctEl.textContent = `${dailyAchievement}%`;
+  
+  const badgeText = document.getElementById('ta-kpi-status-text');
+  const badgeDot = document.getElementById('ta-kpi-status-dot');
+  if (badgeText && badgeDot) {
+    if (dailyTaCount >= dailyTarget) {
+      badgeText.textContent = 'ON TARGET';
+      badgeText.parentElement.style.background = '#d1fae5';
+      badgeText.parentElement.style.color = '#065f46';
+      badgeDot.style.background = '#10b981';
+    } else {
+      badgeText.textContent = 'BELOW TARGET';
+      badgeText.parentElement.style.background = '#fee2e2';
+      badgeText.parentElement.style.color = '#991b1b';
+      badgeDot.style.background = '#ef4444';
+    }
+  }
+
+  // Calculate counts per department (the 7 departments)
+  const deptCounts = {};
+  TA_DEPTS.forEach(d => { deptCounts[d] = 0; });
+  dailyTaAudits.forEach(a => {
+    let dept = a.auditorDept;
+    if (dept === 'GSP#6 (ปล.)') {
+      dept = 'ปล.ยยก.';
+    }
+    if (dept && deptCounts.hasOwnProperty(dept)) {
+      deptCounts[dept]++;
+    }
+  });
+
+  // Render Table
+  const tbody = document.getElementById('ta-table-body');
+  if (tbody) {
+    tbody.innerHTML = '';
+    TA_DEPTS.forEach((dept, index) => {
+      const count = deptCounts[dept];
+      let statusHtml = '';
+      if (count >= DEPT_TARGET) {
+        statusHtml = `<span class="badge badge-approved" style="font-size:0.75rem; padding: 2px 8px;">เป็นไปตามเป้าหมาย</span>`;
+      } else if (count > 0) {
+        statusHtml = `<span class="badge badge-warning" style="font-size:0.75rem; padding: 2px 8px; background: #fef3c7; color: #d97706; border-color: #fde68a;">ไม่เป็นไปตามค่าเป้าหมาย</span>`;
+      } else {
+        statusHtml = `<span class="badge badge-rejected" style="font-size:0.75rem; padding: 2px 8px; background: #f1f5f9; color: #64748b; border-color: #cbd5e1;">ยังไม่ได้ดำเนินการ</span>`;
+      }
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding:10px 16px; text-align:center;">${index + 1}</td>
+        <td style="padding:10px 16px; font-weight:700; color:var(--text-headings);">${dept}</td>
+        <td style="padding:10px 16px; text-align:center; font-weight:700; font-size:1.05rem;">${count} ใบงาน</td>
+        <td style="padding:10px 16px; text-align:center; font-weight:600; color:var(--text-muted);">${DEPT_TARGET} ใบงาน</td>
+        <td style="padding:10px 16px; text-align:center;">${statusHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Total row for the table
+    const totalTr = document.createElement('tr');
+    totalTr.style.background = '#f8fafc';
+    totalTr.style.fontWeight = 'bold';
+    totalTr.style.borderTop = '2px solid var(--border-color)';
+    totalTr.innerHTML = `
+      <td colspan="2" style="padding:12px 16px; text-align:right; font-weight:800; color:var(--text-headings);">รวมทั้งหมด (Total)</td>
+      <td style="padding:12px 16px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${dailyTaCount} ใบงาน</td>
+      <td style="padding:12px 16px; text-align:center; color:var(--text-muted);">${dailyTarget} ใบงาน</td>
+      <td style="padding:12px 16px; text-align:center;">
+        <span class="badge ${dailyTaCount >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
+          ${dailyTaCount >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
+        </span>
+      </td>
+    `;
+    tbody.appendChild(totalTr);
+  }
+
+  // Render Chart
+  const chartCanvas = document.getElementById('taAuditorDeptChart');
+  if (chartCanvas) {
+    const ctx = chartCanvas.getContext('2d');
+    if (taCharts.dept) taCharts.dept.destroy();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, '#f97316'); // Orange
+    gradient.addColorStop(1, '#ef4444'); // Red
+
+    taCharts.dept = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: TA_DEPTS,
+        datasets: [
+          {
+            label: 'จำนวนการตรวจประเมินจริง (ใบงาน)',
+            data: TA_DEPTS.map(d => deptCounts[d]),
+            backgroundColor: gradient,
+            borderRadius: 6,
+            barPercentage: 0.55
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1,
+            titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' },
+            callbacks: { label: ctx => ` จำนวนที่สุ่มตรวจ: ${ctx.raw} ใบงาน` }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Prompt', weight: 'bold' } } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8', font: { family: 'Prompt' }, stepSize: 1 }, min: 0, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+function exportTaDailyData() {
+  const dateInput = document.getElementById('ta-date-filter');
+  if (!dateInput) return;
+  const dateVal = dateInput.value;
+  if (!dateVal) return;
+
+  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+  const dailyTaAudits = taAudits.filter(a => a.date === dateVal);
+
+  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'ปล.ยยก.', 'ปภ.ผยก.'];
+  const deptCounts = {};
+  TA_DEPTS.forEach(d => { deptCounts[d] = 0; });
+  dailyTaAudits.forEach(a => {
+    let dept = a.auditorDept;
+    if (dept === 'GSP#6 (ปล.)') {
+      dept = 'ปล.ยยก.';
+    }
+    if (dept && deptCounts.hasOwnProperty(dept)) {
+      deptCounts[dept]++;
+    }
+  });
+
+  const dateParts = dateVal.split('-');
+  const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : dateVal;
+
+  const DEPT_TARGET = 7;
+  const dailyTarget = TA_DEPTS.length * DEPT_TARGET;
+
+  const rows = [];
+  TA_DEPTS.forEach((dept, index) => {
+    const count = deptCounts[dept];
+    let statusText = '';
+    if (count >= DEPT_TARGET) {
+      statusText = 'เป็นไปตามเป้าหมาย';
+    } else if (count > 0) {
+      statusText = 'ไม่เป็นไปตามค่าเป้าหมาย';
+    } else {
+      statusText = 'ยังไม่ได้ดำเนินการ';
+    }
+
+    rows.push({
+      'ลำดับที่': index + 1,
+      'วันที่ตรวจประเมิน': formattedDate,
+      'หน่วยงานผู้ตรวจ': dept,
+      'จำนวนใบอนุญาตทำงานที่สุ่มตรวจ (ใบงาน)': count,
+      'เป้าหมายการตรวจ (ใบงาน)': DEPT_TARGET,
+      'สถานะการตรวจ': statusText
+    });
+  });
+
+  // Add total row
+  rows.push({
+    'ลำดับที่': 'รวมทั้งหมด',
+    'วันที่ตรวจประเมิน': formattedDate,
+    'หน่วยงานผู้ตรวจ': '-',
+    'จำนวนใบอนุญาตทำงานที่สุ่มตรวจ (ใบงาน)': dailyTaAudits.length,
+    'เป้าหมายการตรวจ (ใบงาน)': dailyTarget,
+    'สถานะการตรวจ': dailyTaAudits.length >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook  = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA Daily Summary');
+
+  // Format column widths
+  const maxProps = {};
+  rows.forEach(row => {
+    Object.keys(row).forEach(key => {
+      const length = String(row[key] || '').length + 4;
+      maxProps[key] = Math.max(maxProps[key] || 10, length, key.length + 4);
+    });
+  });
+  worksheet['!cols'] = Object.keys(maxProps).map(key => ({ wch: Math.min(maxProps[key], 50) }));
+
+  XLSX.writeFile(workbook, `PTW_TA_Daily_Summary_${dateVal}.xlsx`);
+  showToast(`ส่งออกข้อมูลรายงาน TA ประจำวันที่ ${formattedDate} เรียบร้อย`, 'success');
 }
