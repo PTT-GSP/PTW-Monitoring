@@ -1086,7 +1086,9 @@ function applyFilters() {
       audit.permitNo.toLowerCase().includes(searchQuery) ||
       (audit.auditorName && audit.auditorName.toLowerCase().includes(searchQuery)) ||
       (audit.workArea && audit.workArea.toLowerCase().includes(searchQuery)) ||
-      (audit.auditorDept && audit.auditorDept.toLowerCase().includes(searchQuery));
+      (audit.auditorDept && audit.auditorDept.toLowerCase().includes(searchQuery)) ||
+      (audit.permitType && audit.permitType.toLowerCase().includes(searchQuery)) ||
+      (audit.remarks && audit.remarks.toLowerCase().includes(searchQuery));
 
     const matchArea   = area === 'all' || audit.auditorDept === area;
     const matchStatus = status === 'all' || audit.status === status;
@@ -1217,14 +1219,14 @@ async function deleteAuditRecord(id) {
 // 10. EXCEL EXPORT (SHEETJS)
 // ==========================================
 function exportToExcel() {
-  if (auditsDatabase.length === 0) {
+  if (filteredHistoryData.length === 0) {
     showToast('ไม่มีข้อมูลการตรวจประเมินเพื่อส่งออก', 'error');
     return;
   }
 
   const rows = [];
 
-  auditsDatabase.forEach(audit => {
+  filteredHistoryData.forEach(audit => {
     const statusText  = audit.status === 'conformance' ? 'สอดคล้อง (Conformance)' : 'ไม่สอดคล้อง (Non-Conformance)';
     const attachCount = (audit.attachments && audit.attachments.length) || 0;
 
@@ -2395,67 +2397,86 @@ function updateTaDashboard() {
   if (!dateInput) return;
 
   // If date input has no value, set it to the latest date with TA data or today
-  let selectedDate = dateInput.value;
+  let startDateVal = dateInput.value;
   const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
 
-  if (!selectedDate) {
-    if (taAudits.length > 0) {
-      // Find the latest date among TA audits
-      const dates = taAudits.map(a => a.date).sort();
-      selectedDate = dates[dates.length - 1];
-    } else {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      selectedDate = `${year}-${month}-${day}`;
-    }
-    dateInput.value = selectedDate;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayDateVal = `${year}-${month}-${day}`;
+
+  // Update read-only end date input display text with Thai Buddhist year format
+  const thaiYear = year + 543;
+  const thaiFormattedToday = `${day}/${month}/${thaiYear}`;
+  const taEndInput = document.getElementById('ta-date-end');
+  if (taEndInput) {
+    taEndInput.value = thaiFormattedToday;
   }
 
-  // Filter TA audits for the selected date
-  const dailyTaAudits = taAudits.filter(a => a.date === selectedDate);
+  if (!startDateVal) {
+    if (taAudits.length > 0) {
+      // Find the earliest date among TA audits or default to today
+      const dates = taAudits.map(a => a.date).sort();
+      startDateVal = dates[0];
+    } else {
+      startDateVal = todayDateVal;
+    }
+    dateInput.value = startDateVal;
+  }
+
+  // Calculate difference in days (inclusive)
+  const start = new Date(startDateVal);
+  const end = new Date(todayDateVal);
+  start.setHours(0,0,0,0);
+  end.setHours(0,0,0,0);
+  const diffTime = end - start;
+  const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+
+  // Filter TA audits for the selected date range
+  const dailyTaAudits = taAudits.filter(a => a.date >= startDateVal && a.date <= todayDateVal);
   const totalTaCount = taAudits.length;
   const dailyTaCount = dailyTaAudits.length;
   
-  // Counts of defects accumulated (YTD)
-  const totalTaDefects = taAudits.filter(a => a.status === 'non_conformance').length;
+  // Counts of defects accumulated in this range
+  const totalTaDefects = dailyTaAudits.filter(a => a.status === 'non_conformance').length;
 
-  // Calculate daily achievement rate (target = 7 per department, 7 departments = 49 total)
-  const DEPT_TARGET = 7;
+  // Calculate daily achievement rate (target = 7 per department, 7 departments = 49 total per day)
+  const DEPT_TARGET = 7 * diffDays;
   const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
-  const dailyTarget = TA_DEPTS.length * DEPT_TARGET; // 49
+  const dailyTarget = TA_DEPTS.length * DEPT_TARGET; // 49 * diffDays
   const dailyAchievement = parseFloat(((dailyTaCount / dailyTarget) * 100).toFixed(2));
 
   // Update KPI Metrics UI
-  document.getElementById('ta-kpi-total-inspect').textContent = `${totalTaCount} ใบงาน`;
-  document.getElementById('ta-kpi-today-inspect').textContent = `${dailyTaCount} / ${dailyTarget} ใบงาน`;
+  document.getElementById('ta-kpi-total-inspect').textContent = `${dailyTaCount} ใบงาน`;
   
   const defectEl = document.getElementById('ta-kpi-defect-count');
   if (defectEl) defectEl.textContent = `${totalTaDefects} ใบงาน`;
   
-  const pctEl = document.getElementById('ta-kpi-pct-achievement');
-  if (pctEl) pctEl.textContent = `${dailyAchievement}%`;
+  // Update KPI titles and subtexts based on diffDays
+  const totalTitleEl = document.getElementById('ta-kpi-total-title');
+  const totalSubEl = document.getElementById('ta-kpi-total-sub');
+  const defectSubEl = document.getElementById('ta-kpi-defect-sub');
   
-  const badgeText = document.getElementById('ta-kpi-status-text');
-  const badgeDot = document.getElementById('ta-kpi-status-dot');
-  if (badgeText && badgeDot) {
-    if (dailyTaCount >= dailyTarget) {
-      badgeText.textContent = 'ON TARGET';
-      badgeText.parentElement.style.background = '#d1fae5';
-      badgeText.parentElement.style.color = '#065f46';
-      badgeDot.style.background = '#10b981';
-    } else {
-      badgeText.textContent = 'BELOW TARGET';
-      badgeText.parentElement.style.background = '#fee2e2';
-      badgeText.parentElement.style.color = '#991b1b';
-      badgeDot.style.background = '#ef4444';
-    }
+  if (diffDays === 1) {
+    if (totalTitleEl) totalTitleEl.textContent = 'Work Permit (TA) Inspection Actual';
+    if (totalSubEl) totalSubEl.textContent = 'จำนวนสุ่มตรวจใบอนุญาตทำงานประจำวัน';
+    if (defectSubEl) defectSubEl.textContent = 'จำนวนใบอนุญาตทำงานบกพร่องประจำวัน';
+  } else {
+    if (totalTitleEl) totalTitleEl.textContent = 'Work Permit (TA) Inspection Actual';
+    if (totalSubEl) totalSubEl.textContent = `จำนวนสุ่มตรวจสะสมในแผนงานตามช่วงเวลา (${diffDays} วัน)`;
+    if (defectSubEl) defectSubEl.textContent = `จำนวนใบอนุญาตทำงานบกพร่องตามช่วงเวลา (${diffDays} วัน)`;
   }
 
   // Calculate counts per department (the 7 departments)
   const deptCounts = {};
-  TA_DEPTS.forEach(d => { deptCounts[d] = 0; });
+  const deptPermitTypeCounts = {}; // Key: dept, Value: { 'Hot Work Class I': 0, 'Hot Work Class II': 0, ... }
+
+  TA_DEPTS.forEach(d => {
+    deptCounts[d] = 0;
+    deptPermitTypeCounts[d] = {};
+  });
+
   dailyTaAudits.forEach(a => {
     let dept = a.auditorDept;
     if (dept === 'ปล.ยยก.') {
@@ -2463,6 +2484,15 @@ function updateTaDashboard() {
     }
     if (dept && deptCounts.hasOwnProperty(dept)) {
       deptCounts[dept]++;
+
+      let type = a.permitType || 'Cold Work';
+      if (type === 'Scaffolding') {
+        type = 'Cold Work';
+      }
+      if (!deptPermitTypeCounts[dept][type]) {
+        deptPermitTypeCounts[dept][type] = 0;
+      }
+      deptPermitTypeCounts[dept][type]++;
     }
   });
 
@@ -2480,28 +2510,93 @@ function updateTaDashboard() {
       } else {
         statusHtml = `<span class="badge badge-rejected" style="font-size:0.75rem; padding: 2px 8px; background: #f1f5f9; color: #64748b; border-color: #cbd5e1;">ยังไม่ได้ดำเนินการ</span>`;
       }
-      
+
+      const typesObj = deptPermitTypeCounts[dept] || {};
+      const coldCount = typesObj['Cold Work'] || 0;
+      const hot1Count = typesObj['Hot Work Class I'] || 0;
+      const hot2Count = typesObj['Hot Work Class II'] || 0;
+      const elecCount = typesObj['Electrical/Instrument'] || 0;
+      const craneCount = typesObj['Mobile Crane/Hiab, Unic Crane'] || 0;
+      const spaceCount = typesObj['Confined Space'] || 0;
+      const digCount = typesObj['Excavation'] || 0;
+      const radCount = typesObj['Radio Isotopes'] || 0;
+
+      const fCold = coldCount > 0 ? `<strong>${coldCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fHot1 = hot1Count > 0 ? `<strong>${hot1Count}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fHot2 = hot2Count > 0 ? `<strong>${hot2Count}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fElec = elecCount > 0 ? `<strong>${elecCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fCrane = craneCount > 0 ? `<strong>${craneCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fSpace = spaceCount > 0 ? `<strong>${spaceCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fDig = digCount > 0 ? `<strong>${digCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+      const fRad = radCount > 0 ? `<strong>${radCount}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="padding:10px 16px; text-align:center;">${index + 1}</td>
-        <td style="padding:10px 16px; font-weight:700; color:var(--text-headings);">${dept}</td>
-        <td style="padding:10px 16px; text-align:center; font-weight:700; font-size:1.05rem;">${count} ใบงาน</td>
-        <td style="padding:10px 16px; text-align:center; font-weight:600; color:var(--text-muted);">${DEPT_TARGET} ใบงาน</td>
-        <td style="padding:10px 16px; text-align:center;">${statusHtml}</td>
+        <td style="padding:10px 8px; text-align:center;">${index + 1}</td>
+        <td style="padding:10px 8px; font-weight:700; color:var(--text-headings);">${dept}</td>
+        
+        <td style="padding:10px 8px; text-align:center; font-weight:700; font-size:1.05rem; cursor:pointer; color:var(--primary); text-decoration:underline;" onclick="showTaDeptDetails('${dept}')">${count} ใบงาน</td>
+
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fCold}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fHot1}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fHot2}</td>
+        
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fElec}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fCrane}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fSpace}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fDig}</td>
+        <td style="padding:10px 8px; text-align:center; background-color:#fffdf5;">${fRad}</td>
+        
+        <td style="padding:10px 8px; text-align:center; font-weight:600; color:var(--text-muted);">${DEPT_TARGET} ใบงาน</td>
+        <td style="padding:10px 8px; text-align:center;">${statusHtml}</td>
       `;
       tbody.appendChild(tr);
     });
 
+    // Total row calculations
+    let totCold = 0, totHot1 = 0, totHot2 = 0, totElec = 0, totCrane = 0, totSpace = 0, totDig = 0, totRad = 0;
+    Object.values(deptPermitTypeCounts).forEach(typesObj => {
+      totCold += typesObj['Cold Work'] || 0;
+      totHot1 += typesObj['Hot Work Class I'] || 0;
+      totHot2 += typesObj['Hot Work Class II'] || 0;
+      totElec += typesObj['Electrical/Instrument'] || 0;
+      totCrane += typesObj['Mobile Crane/Hiab, Unic Crane'] || 0;
+      totSpace += typesObj['Confined Space'] || 0;
+      totDig += typesObj['Excavation'] || 0;
+      totRad += typesObj['Radio Isotopes'] || 0;
+    });
+
+    const fTotCold = totCold > 0 ? `<strong>${totCold}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotHot1 = totHot1 > 0 ? `<strong>${totHot1}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotHot2 = totHot2 > 0 ? `<strong>${totHot2}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotElec = totElec > 0 ? `<strong>${totElec}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotCrane = totCrane > 0 ? `<strong>${totCrane}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotSpace = totSpace > 0 ? `<strong>${totSpace}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotDig = totDig > 0 ? `<strong>${totDig}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+    const fTotRad = totRad > 0 ? `<strong>${totRad}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
+
     // Total row for the table
     const totalTr = document.createElement('tr');
-    totalTr.style.background = '#f8fafc';
+    totalTr.style.background = '#f1f5f9';
     totalTr.style.fontWeight = 'bold';
     totalTr.style.borderTop = '2px solid var(--border-color)';
     totalTr.innerHTML = `
-      <td colspan="2" style="padding:12px 16px; text-align:right; font-weight:800; color:var(--text-headings);">รวมทั้งหมด (Total)</td>
-      <td style="padding:12px 16px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${dailyTaCount} ใบงาน</td>
-      <td style="padding:12px 16px; text-align:center; color:var(--text-muted);">${dailyTarget} ใบงาน</td>
-      <td style="padding:12px 16px; text-align:center;">
+      <td colspan="2" style="padding:12px 8px; text-align:right; font-weight:800; color:var(--text-headings);">รวมทั้งหมด (Total)</td>
+      
+      <td style="padding:12px 8px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${dailyTaCount} ใบงาน</td>
+
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotCold}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotHot1}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotHot2}</td>
+      
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotElec}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotCrane}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotSpace}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotDig}</td>
+      <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotRad}</td>
+      
+      <td style="padding:12px 8px; text-align:center; color:var(--text-muted);">${dailyTarget} ใบงาน</td>
+      <td style="padding:12px 8px; text-align:center;">
         <span class="badge ${dailyTaCount >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
           ${dailyTaCount >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
         </span>
@@ -2557,11 +2652,17 @@ function updateTaDashboard() {
 function exportTaDailyData() {
   const dateInput = document.getElementById('ta-date-filter');
   if (!dateInput) return;
-  const dateVal = dateInput.value;
-  if (!dateVal) return;
+  const startDateVal = dateInput.value;
+  if (!startDateVal) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayDateVal = `${year}-${month}-${day}`;
 
   const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
-  const dailyTaAudits = taAudits.filter(a => a.date === dateVal);
+  const dailyTaAudits = taAudits.filter(a => a.date >= startDateVal && a.date <= todayDateVal);
 
   const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
   const deptCounts = {};
@@ -2576,10 +2677,21 @@ function exportTaDailyData() {
     }
   });
 
-  const dateParts = dateVal.split('-');
-  const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : dateVal;
+  const startParts = startDateVal.split('-');
+  const endParts = todayDateVal.split('-');
+  const formattedStart = startParts.length === 3 ? `${startParts[2]}/${startParts[1]}/${startParts[0]}` : startDateVal;
+  const formattedEnd = endParts.length === 3 ? `${endParts[2]}/${endParts[1]}/${endParts[0]}` : todayDateVal;
+  const dateRangeStr = `${formattedStart} - ${formattedEnd}`;
 
-  const DEPT_TARGET = 7;
+  // Calculate difference in days
+  const start = new Date(startDateVal);
+  const end = new Date(todayDateVal);
+  start.setHours(0,0,0,0);
+  end.setHours(0,0,0,0);
+  const diffTime = end - start;
+  const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+
+  const DEPT_TARGET = 7 * diffDays;
   const dailyTarget = TA_DEPTS.length * DEPT_TARGET;
 
   const rows = [];
@@ -2596,7 +2708,7 @@ function exportTaDailyData() {
 
     rows.push({
       'ลำดับที่': index + 1,
-      'วันที่ตรวจประเมิน': formattedDate,
+      'ช่วงวันที่ตรวจประเมิน': dateRangeStr,
       'หน่วยงานผู้ตรวจ': dept,
       'จำนวนใบอนุญาตทำงานที่สุ่มตรวจ (ใบงาน)': count,
       'เป้าหมายการตรวจ (ใบงาน)': DEPT_TARGET,
@@ -2607,7 +2719,7 @@ function exportTaDailyData() {
   // Add total row
   rows.push({
     'ลำดับที่': 'รวมทั้งหมด',
-    'วันที่ตรวจประเมิน': formattedDate,
+    'ช่วงวันที่ตรวจประเมิน': dateRangeStr,
     'หน่วยงานผู้ตรวจ': '-',
     'จำนวนใบอนุญาตทำงานที่สุ่มตรวจ (ใบงาน)': dailyTaAudits.length,
     'เป้าหมายการตรวจ (ใบงาน)': dailyTarget,
@@ -2616,7 +2728,7 @@ function exportTaDailyData() {
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const workbook  = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA Daily Summary');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA Summary');
 
   // Format column widths
   const maxProps = {};
@@ -2628,6 +2740,73 @@ function exportTaDailyData() {
   });
   worksheet['!cols'] = Object.keys(maxProps).map(key => ({ wch: Math.min(maxProps[key], 50) }));
 
-  XLSX.writeFile(workbook, `PTW_TA_Daily_Summary_${dateVal}.xlsx`);
-  showToast(`ส่งออกข้อมูลรายงาน TA ประจำวันที่ ${formattedDate} เรียบร้อย`, 'success');
+  XLSX.writeFile(workbook, `PTW_TA_Summary_${startDateVal}_to_${todayDateVal}.xlsx`);
+  showToast(`ส่งออกข้อมูลรายงาน TA ช่วงวันที่ ${dateRangeStr} เรียบร้อย`, 'success');
+}
+
+function showTaDeptDetails(deptName) {
+  const dateInput = document.getElementById('ta-date-filter');
+  if (!dateInput) return;
+  const startDateVal = dateInput.value;
+  if (!startDateVal) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayDateVal = `${year}-${month}-${day}`;
+
+  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+  
+  // Filter audits for this department (supporting the ปล.ยยก. -> GSP#6 (ปล.) fallback)
+  const deptAudits = taAudits.filter(a => {
+    let d = a.auditorDept;
+    if (d === 'ปล.ยยก.') {
+      d = 'GSP#6 (ปล.)';
+    }
+    return d === deptName && a.date >= startDateVal && a.date <= todayDateVal;
+  });
+
+  const titleEl = document.getElementById('ta-drilldown-title');
+  if (titleEl) {
+    titleEl.textContent = `รายละเอียดข้อมูลการตรวจประเมินของหน่วยงาน ${deptName} (${startDateVal} ถึง ${todayDateVal})`;
+  }
+
+  const tbody = document.getElementById('ta-drilldown-body');
+  if (tbody) {
+    tbody.innerHTML = '';
+    
+    if (deptAudits.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">ไม่มีข้อมูลการตรวจประเมินในช่วงเวลานี้</td></tr>`;
+    } else {
+      deptAudits.forEach(audit => {
+        const isNC = audit.status === 'non_conformance';
+        const statusText = isNC ? 'ไม่สอดคล้อง' : 'สอดคล้อง';
+        const statusStyle = isNC ? 'font-weight: 700; color: #ef4444; text-align: center;' : 'color: #1e293b; text-align: center;';
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-color)';
+        tr.innerHTML = `
+          <td style="padding:12px 16px; font-family: monospace; font-size:0.85rem; font-weight:700; border-right: 1px solid var(--border-color);">${audit.permitNo}</td>
+          <td style="padding:12px 16px; border-right: 1px solid var(--border-color);">${audit.permitType || 'Cold Work'}</td>
+          <td style="padding:12px 16px; ${statusStyle}">${statusText}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  const container = document.getElementById('ta-drilldown-container');
+  if (container) {
+    container.style.display = 'block';
+    // Smooth scroll to the details container
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function closeTaDrilldown() {
+  const container = document.getElementById('ta-drilldown-container');
+  if (container) {
+    container.style.display = 'none';
+  }
 }
