@@ -960,6 +960,7 @@ async function handleFormSubmit(event) {
   showToast('กำลังบันทึกข้อมูลและอัปโหลดไฟล์...', 'info');
 
   const permitNo     = document.getElementById('input-permit-no').value.trim();
+  const isTA         = document.getElementById('checkbox-is-ta') ? document.getElementById('checkbox-is-ta').checked : false;
   const permitType   = document.getElementById('select-permit-type').value;
   const workArea     = document.getElementById('select-work-area').value;
   const date         = document.getElementById('input-date').value;
@@ -1016,7 +1017,7 @@ async function handleFormSubmit(event) {
     // 2. Save to Firestore
     const newAudit = {
       permitNo, permitType, workArea, date,
-      auditorName, auditorDept, checklist, status, remarks,
+      auditorName, auditorDept, checklist, status, remarks, isTA,
       attachments: uploadedAttachments,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -1605,6 +1606,10 @@ function openEditModal(auditId) {
       <div class="form-group">
         <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">เลขที่ใบอนุญาต (Permit No.) *</label>
         <input type="text" id="edit-permit-no" class="form-input" value="${audit.permitNo || ''}" required style="width:100%;">
+        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-top: 10px;">
+          <input type="checkbox" id="edit-checkbox-is-ta" style="width: 16px; height: 16px; cursor: pointer;" ${audit.isTA ? 'checked' : ''}>
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary); white-space: nowrap;">ใบอนุญาตทำงานตรวจช่วงซ่อมบำรุงใหญ่ (TA)</span>
+        </label>
       </div>
       <div class="form-group">
         <label style="display:block; font-weight:600; font-size:0.85rem; margin-bottom:5px;">ประเภทใบอนุญาต *</label>
@@ -1716,6 +1721,7 @@ async function saveEditAudit() {
   if (!editingAuditId) return;
 
   const permitNo   = document.getElementById('edit-permit-no').value.trim();
+  const isTA       = document.getElementById('edit-checkbox-is-ta') ? document.getElementById('edit-checkbox-is-ta').checked : false;
   const permitType = document.getElementById('edit-permit-type').value;
   const workArea   = document.getElementById('edit-work-area').value;
   const date       = document.getElementById('edit-date').value;
@@ -1742,7 +1748,7 @@ async function saveEditAudit() {
   try {
     await db.collection('audits').doc(editingAuditId).update({
       permitNo, permitType, workArea, date,
-      auditorName, auditorDept, checklist, status, remarks,
+      auditorName, auditorDept, checklist, status, remarks, isTA,
       attachments: editingAttachments
     });
 
@@ -2398,7 +2404,7 @@ function updateTaDashboard() {
 
   // If date input has no value, set it to the latest date with TA data or today
   let startDateVal = dateInput.value;
-  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+  const taAudits = auditsDatabase.filter(audit => audit.isTA || (audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA')));
 
   const now = new Date();
   const year = now.getFullYear();
@@ -2566,6 +2572,9 @@ function updateTaDashboard() {
       totRad += typesObj['Radio Isotopes'] || 0;
     });
 
+    let sumDeptCounts = 0;
+    Object.values(deptCounts).forEach(c => { sumDeptCounts += c; });
+
     const fTotCold = totCold > 0 ? `<strong>${totCold}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
     const fTotHot1 = totHot1 > 0 ? `<strong>${totHot1}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
     const fTotHot2 = totHot2 > 0 ? `<strong>${totHot2}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
@@ -2583,7 +2592,7 @@ function updateTaDashboard() {
     totalTr.innerHTML = `
       <td colspan="2" style="padding:12px 8px; text-align:right; font-weight:800; color:var(--text-headings);">รวมทั้งหมด (Total)</td>
       
-      <td style="padding:12px 8px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${dailyTaCount} ใบงาน</td>
+      <td style="padding:12px 8px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${sumDeptCounts} ใบงาน</td>
 
       <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotCold}</td>
       <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotHot1}</td>
@@ -2597,8 +2606,8 @@ function updateTaDashboard() {
       
       <td style="padding:12px 8px; text-align:center; color:var(--text-muted);">${dailyTarget} ใบงาน</td>
       <td style="padding:12px 8px; text-align:center;">
-        <span class="badge ${dailyTaCount >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
-          ${dailyTaCount >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
+        <span class="badge ${sumDeptCounts >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
+          ${sumDeptCounts >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
         </span>
       </td>
     `;
@@ -2661,7 +2670,7 @@ function exportTaDailyData() {
   const day = String(now.getDate()).padStart(2, '0');
   const todayDateVal = `${year}-${month}-${day}`;
 
-  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+  const taAudits = auditsDatabase.filter(audit => audit.isTA || (audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA')));
   const dailyTaAudits = taAudits.filter(a => a.date >= startDateVal && a.date <= todayDateVal);
 
   const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
@@ -2756,7 +2765,7 @@ function showTaDeptDetails(deptName) {
   const day = String(now.getDate()).padStart(2, '0');
   const todayDateVal = `${year}-${month}-${day}`;
 
-  const taAudits = auditsDatabase.filter(audit => audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA'));
+  const taAudits = auditsDatabase.filter(audit => audit.isTA || (audit.permitNo && audit.permitNo.toUpperCase().startsWith('TA')));
   
   // Filter audits for this department (supporting the ปล.ยยก. -> GSP#6 (ปล.) fallback)
   const deptAudits = taAudits.filter(a => {

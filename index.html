@@ -413,6 +413,10 @@
               <div class="form-group">
                 <label for="input-permit-no">เลขที่ใบอนุญาตทำงาน (Permit No.) *</label>
                 <input type="text" id="input-permit-no" required placeholder="เช่น N/SAP/ปภ.ผยก./00028/69" class="form-input">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-top: 10px;">
+                  <input type="checkbox" id="checkbox-is-ta" style="width: 16px; height: 16px; cursor: pointer;">
+                  <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary); white-space: nowrap;">ใบอนุญาตทำงานตรวจช่วงซ่อมบำรุงใหญ่ (TA)</span>
+                </label>
               </div>
               <div class="form-group">
                 <label for="select-permit-type">ประเภทใบอนุญาตทำงาน *</label>
@@ -823,7 +827,7 @@
     };
   </script>
 
-  <script src="app.js?v=1.4.6"></script>
+  <script src="app.js?v=1.4.9"></script>
 
   <!-- ADD PR MODAL -->
   <div class="modal-overlay" id="add-pr-modal" onclick="closePrModal(event)">
