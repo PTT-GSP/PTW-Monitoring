@@ -2439,8 +2439,14 @@ function updateTaDashboard() {
   const diffTime = end - start;
   const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
 
-  // Filter TA audits for the selected date range
-  const dailyTaAudits = taAudits.filter(a => a.date >= startDateVal && a.date <= todayDateVal);
+  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
+
+  // Filter TA audits for the selected date range and target departments
+  const dailyTaAudits = taAudits.filter(a => {
+    let dept = a.auditorDept;
+    if (dept === 'ปล.ยยก.') dept = 'GSP#6 (ปล.)';
+    return a.date >= startDateVal && a.date <= todayDateVal && TA_DEPTS.includes(dept);
+  });
   const totalTaCount = taAudits.length;
   const dailyTaCount = dailyTaAudits.length;
   
@@ -2449,7 +2455,6 @@ function updateTaDashboard() {
 
   // Calculate daily achievement rate (target = 7 per department, 7 departments = 49 total per day)
   const DEPT_TARGET = 7 * diffDays;
-  const TA_DEPTS = ['บง.วบก.', 'บค.วบก.', 'บฟ.วบก.', 'ตร.วบก.', 'ซญ.วบก.', 'GSP#6 (ปล.)', 'ปภ.ผยก.'];
   const dailyTarget = TA_DEPTS.length * DEPT_TARGET; // 49 * diffDays
   const dailyAchievement = parseFloat(((dailyTaCount / dailyTarget) * 100).toFixed(2));
 
@@ -2572,9 +2577,6 @@ function updateTaDashboard() {
       totRad += typesObj['Radio Isotopes'] || 0;
     });
 
-    let sumDeptCounts = 0;
-    Object.values(deptCounts).forEach(c => { sumDeptCounts += c; });
-
     const fTotCold = totCold > 0 ? `<strong>${totCold}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
     const fTotHot1 = totHot1 > 0 ? `<strong>${totHot1}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
     const fTotHot2 = totHot2 > 0 ? `<strong>${totHot2}</strong>` : `<span style="color:#cbd5e1;">-</span>`;
@@ -2592,7 +2594,7 @@ function updateTaDashboard() {
     totalTr.innerHTML = `
       <td colspan="2" style="padding:12px 8px; text-align:right; font-weight:800; color:var(--text-headings);">รวมทั้งหมด (Total)</td>
       
-      <td style="padding:12px 8px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${sumDeptCounts} ใบงาน</td>
+      <td style="padding:12px 8px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--primary);">${dailyTaCount} ใบงาน</td>
 
       <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotCold}</td>
       <td style="padding:12px 8px; text-align:center; background-color:#fefce8;">${fTotHot1}</td>
@@ -2606,8 +2608,8 @@ function updateTaDashboard() {
       
       <td style="padding:12px 8px; text-align:center; color:var(--text-muted);">${dailyTarget} ใบงาน</td>
       <td style="padding:12px 8px; text-align:center;">
-        <span class="badge ${sumDeptCounts >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
-          ${sumDeptCounts >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
+        <span class="badge ${dailyTaCount >= dailyTarget ? 'badge-approved' : 'badge-rejected'}" style="font-size:0.75rem;">
+          ${dailyTaCount >= dailyTarget ? 'เป็นไปตามเป้าหมาย' : 'ไม่เป็นไปตามค่าเป้าหมาย'}
         </span>
       </td>
     `;
