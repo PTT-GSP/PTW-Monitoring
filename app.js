@@ -239,6 +239,23 @@ const BASELINE_AREA_PERCENTAGES = {
     { area: 'วก.วบก.',             percentage: 0.0 },
     { area: 'ตร.วบก.',             percentage: 0.0 },
     { area: 'ปภ.ผยก.',             percentage: 0.0 },
+  ],
+  Oct: [
+    { area: 'GSP#1 Process (ปผ.)', percentage: 0.0 },
+    { area: 'GSP#1 Utility (ปผ.)', percentage: 0.0 },
+    { area: 'GSP#2 (ปผ.)',         percentage: 0.0 },
+    { area: 'GSP#3 (ปผ.)',         percentage: 0.0 },
+    { area: 'ESP (ปอ.)',           percentage: 0.0 },
+    { area: 'GSP#5 (ปต.)',         percentage: 0.0 },
+    { area: 'GSP#6 (ปล.)',         percentage: 0.0 },
+    { area: 'Tank Farm & CWWTP (คธ.)', percentage: 0.0 },
+    { area: 'GPPP (ปก.)',          percentage: 0.0 },
+    { area: 'บง.วบก.',             percentage: 0.0 },
+    { area: 'บค.วบก.',             percentage: 0.0 },
+    { area: 'บฟ.วบก.',             percentage: 0.0 },
+    { area: 'วก.วบก.',             percentage: 0.0 },
+    { area: 'ตร.วบก.',             percentage: 0.0 },
+    { area: 'ปภ.ผยก.',             percentage: 100.0 },
   ]
 };
 
@@ -263,20 +280,111 @@ const BASELINE_WORK_AREA_COUNTS = {
 // 3A. EDITABLE BASELINE (Dashboard Monthly Data)
 // ==========================================
 const DEFAULT_BASELINE = [
-  { month: 'Nov', label: 'พ.ย. 68', total: 6925, inspect: 1037, defect: 0 },
-  { month: 'Dec', label: 'ธ.ค. 68', total: 5863, inspect: 1216, defect: 1 },
-  { month: 'Jan', label: 'ม.ค. 69', total: 5931, inspect: 950,  defect: 0 },
-  { month: 'Feb', label: 'ก.พ. 69', total: 6272, inspect: 1001, defect: 1 },
-  { month: 'Mar', label: 'มี.ค. 69', total: 6907, inspect: 1050, defect: 1 },
-  { month: 'Apr', label: 'เม.ย. 69', total: 0,    inspect: 921,  defect: 0 },
-  { month: 'May', label: 'พ.ค. 69', total: 0,    inspect: 1020, defect: 0 },
-  { month: 'Jun', label: 'มิ.ย. 69', total: 0,    inspect: 984,  defect: 0 },
-  { month: 'Jul', label: 'ก.ค. 69', total: 0,    inspect: 587,  defect: 0 },
-  { month: 'Aug', label: 'ส.ค. 69', total: 0,    inspect: 4,    defect: 0 },
-  { month: 'Sep', label: 'ก.ย. 69', total: 0,    inspect: 0,    defect: 0 },
-  { month: 'Oct', label: 'ต.ค. 69', total: 0,    inspect: 0,    defect: 0 },
+  { month: 'Nov',   label: 'พ.ย. 68', total: 6925, inspect: 1037, defect: 0, year: 2025, monthNum: 11 },
+  { month: 'Dec',   label: 'ธ.ค. 68', total: 5863, inspect: 1216, defect: 1, year: 2025, monthNum: 12 },
+  { month: 'Jan',   label: 'ม.ค. 69', total: 5931, inspect: 950,  defect: 0, year: 2026, monthNum: 1 },
+  { month: 'Feb',   label: 'ก.พ. 69', total: 6272, inspect: 1001, defect: 1, year: 2026, monthNum: 2 },
+  { month: 'Mar',   label: 'มี.ค. 69', total: 6907, inspect: 1050, defect: 1, year: 2026, monthNum: 3 },
+  { month: 'Apr',   label: 'เม.ย. 69', total: 0,    inspect: 921,  defect: 0, year: 2026, monthNum: 4 },
+  { month: 'May',   label: 'พ.ค. 69', total: 0,    inspect: 1020, defect: 0, year: 2026, monthNum: 5 },
+  { month: 'Jun',   label: 'มิ.ย. 69', total: 0,    inspect: 984,  defect: 0, year: 2026, monthNum: 6 },
+  { month: 'Jul',   label: 'ก.ค. 69', total: 0,    inspect: 587,  defect: 0, year: 2026, monthNum: 7 },
+  { month: 'Aug',   label: 'ส.ค. 69', total: 0,    inspect: 4,    defect: 0, year: 2026, monthNum: 8 },
+  { month: 'Sep',   label: 'ก.ย. 69', total: 0,    inspect: 0,    defect: 0, year: 2026, monthNum: 9 },
+  { month: 'Oct',   label: 'ต.ค. 69', total: 0,    inspect: 40,   defect: 0, year: 2026, monthNum: 10 },
+  // ปีงบประมาณ 2570 (เริ่ม พ.ย. 2569)
+  { month: 'Nov69', label: 'พ.ย. 69', total: 0,    inspect: 0,    defect: 0, year: 2026, monthNum: 11 },
+  { month: 'Dec69', label: 'ธ.ค. 69', total: 0,    inspect: 0,    defect: 0, year: 2026, monthNum: 12 },
+  { month: 'Jan70', label: 'ม.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 1 },
+  { month: 'Feb70', label: 'ก.พ. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 2 },
+  { month: 'Mar70', label: 'มี.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 3 },
+  { month: 'Apr70', label: 'เม.ย. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 4 },
+  { month: 'May70', label: 'พ.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 5 },
+  { month: 'Jun70', label: 'มิ.ย. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 6 },
+  { month: 'Jul70', label: 'ก.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 7 },
+  { month: 'Aug70', label: 'ส.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 8 },
+  { month: 'Sep70', label: 'ก.ย. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 9 },
+  { month: 'Oct70', label: 'ต.ค. 70', total: 0,    inspect: 0,    defect: 0, year: 2027, monthNum: 10 },
 ];
 let editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
+
+function getMonthKeyFromDate(dateStr) {
+  if (!dateStr) return 'Jan';
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return 'Jan';
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+
+  const found = editableBaseline.find(b => b.year === year && b.monthNum === month);
+  if (found) return found.month;
+
+  if (year === 2025 && month === 11) return 'Nov';
+  if (year === 2025 && month === 12) return 'Dec';
+  if (year === 2026 && month === 11) return 'Nov69';
+  if (year === 2026 && month === 12) return 'Dec69';
+  if (year === 2027 && month === 1) return 'Jan70';
+  if (year === 2027 && month === 2) return 'Feb70';
+  if (year === 2027 && month === 3) return 'Mar70';
+  if (year === 2027 && month === 4) return 'Apr70';
+  if (year === 2027 && month === 5) return 'May70';
+  if (year === 2027 && month === 6) return 'Jun70';
+  if (year === 2027 && month === 7) return 'Jul70';
+  if (year === 2027 && month === 8) return 'Aug70';
+  if (year === 2027 && month === 9) return 'Sep70';
+  if (year === 2027 && month === 10) return 'Oct70';
+
+  const defaultShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return defaultShort[month - 1] || 'Jan';
+}
+
+// ==========================================
+// 3B. DASHBOARD PERIODS (ช่วงข้อมูลรอบปีงบประมาณ)
+// ==========================================
+const DASHBOARD_PERIODS = [
+  {
+    id: 'fy70',
+    label: '1 พ.ย. 69 - 30 ต.ค. 70',
+    shortLabel: '1 พ.ย. 69 - 30 ต.ค. 70',
+    startDate: '2026-11-01',
+    endDate: '2027-10-31',
+    months: ['Nov69', 'Dec69', 'Jan70', 'Feb70', 'Mar70', 'Apr70', 'May70', 'Jun70', 'Jul70', 'Aug70', 'Sep70', 'Oct70']
+  },
+  {
+    id: 'fy69',
+    label: '1 พ.ย. 68 - 30 ต.ค. 69',
+    shortLabel: '1 พ.ย. 68 - 30 ต.ค. 69',
+    startDate: '2025-11-01',
+    endDate: '2026-10-31',
+    months: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct']
+  }
+];
+
+function getCurrentDashboardPeriodId() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const found = DASHBOARD_PERIODS.find(p => todayStr >= p.startDate && todayStr <= p.endDate);
+  return found ? found.id : 'fy70';
+}
+
+let selectedDashboardPeriod = getCurrentDashboardPeriodId();
+
+function changeDashboardPeriod(periodId) {
+  selectedDashboardPeriod = periodId;
+  const periodSelect = document.getElementById('dashboard-period-select');
+  if (periodSelect && periodSelect.value !== periodId) {
+    periodSelect.value = periodId;
+  }
+  // When switching period, sync the selected month in Chart 3
+  if (periodId === 'fy70') {
+    changeSelectedMonth(getCurrentMonthShort());
+  } else if (periodId === 'fy69') {
+    if (!BASELINE_AREA_PERCENTAGES[selectedMonth]) {
+      changeSelectedMonth('Jan');
+    } else {
+      changeSelectedMonth(selectedMonth);
+    }
+  }
+  updateDashboard();
+}
 
 // ==========================================
 // 3. GLOBAL STATE
@@ -352,7 +460,12 @@ document.addEventListener('DOMContentLoaded', () => {
               saved.inspect = 4;
               needsUpdate = true;
             }
-            return { ...def, ...saved };
+            // Force migration update for October baseline if it is not yet updated to 40
+            if (saved.month === 'Oct' && saved.inspect < 40) {
+              saved.inspect = 40;
+              needsUpdate = true;
+            }
+            return { ...def, ...saved, year: def.year, monthNum: def.monthNum, label: def.label };
           }
           needsUpdate = true;
           return { ...def };
@@ -371,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = JSON.parse(savedBaseline);
             editableBaseline = DEFAULT_BASELINE.map(def => {
               const saved = parsed.find(p => p.month === def.month);
-              return saved ? { ...def, ...saved } : { ...def };
+              return saved ? { ...def, ...saved, year: def.year, monthNum: def.monthNum, label: def.label } : { ...def };
             });
             updateDashboard();
             
@@ -396,13 +509,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsed = JSON.parse(savedBaseline);
         editableBaseline = DEFAULT_BASELINE.map(def => {
           const saved = parsed.find(p => p.month === def.month);
-          return saved ? { ...def, ...saved } : { ...def };
+          return saved ? { ...def, ...saved, year: def.year, monthNum: def.monthNum, label: def.label } : { ...def };
         });
       } catch(e) {
         editableBaseline = DEFAULT_BASELINE.map(b => ({...b}));
       }
     }
   }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const periodParam = urlParams.get('period');
+  if (periodParam && DASHBOARD_PERIODS.some(p => p.id === periodParam)) {
+    selectedDashboardPeriod = periodParam;
+    if (periodParam === 'fy69' && !BASELINE_AREA_PERCENTAGES[selectedMonth]) {
+      selectedMonth = 'Jan';
+    }
+  }
+
+  const monthParam = urlParams.get('month');
+  if (monthParam && ['Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'].includes(monthParam)) {
+    selectedMonth = monthParam;
+  }
+
+  const periodSelect = document.getElementById('dashboard-period-select');
+  if (periodSelect) periodSelect.value = selectedDashboardPeriod;
 
   changeSelectedMonth(selectedMonth);
   changeWorkAreaMonth(selectedWorkAreaMonth);
@@ -414,6 +544,16 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDashboard();
   updateTaDashboard();
   initSafetySection();
+
+  const initialTab = urlParams.get('tab') || (window.location.hash ? window.location.hash.substring(1) : null);
+  if (initialTab && ['form', 'dashboard', 'ta-dashboard', 'history', 'safety'].includes(initialTab)) {
+    switchTab(initialTab);
+  }
+
+  if (urlParams.get('modal') === 'baseline') {
+    switchTab('dashboard');
+    setTimeout(() => { openDashboardEditor(); }, 500);
+  }
 });
 
 function setDefaultDateTime() {
@@ -607,8 +747,10 @@ function changeSelectedMonth(month) {
   if (activeBtn) activeBtn.classList.add('active');
 
   const monthThai = { Nov:'พ.ย.', Dec:'ธ.ค.', Jan:'ม.ค.', Feb:'ก.พ.', Mar:'มี.ค.', Apr:'เม.ย.', May:'พ.ค.', Jun:'มิ.ย.', Jul:'ก.ค.', Aug:'ส.ค.', Sep:'ก.ย.', Oct:'ต.ค.' };
+  const period = DASHBOARD_PERIODS.find(p => p.id === selectedDashboardPeriod);
+  const periodStr = period ? ` (${period.label})` : '';
   const subtitle = document.getElementById('auditor-chart-subtitle');
-  if (subtitle) subtitle.textContent = `ข้อมูลประจำเดือน ${monthThai[month] || month} | เป้าหมายมาตรฐาน 40 ใบ/หน่วยงาน/เดือน`;
+  if (subtitle) subtitle.textContent = `ข้อมูลประจำเดือน ${monthThai[month] || month}${periodStr} | เป้าหมายมาตรฐาน 40 ใบ/หน่วยงาน/เดือน`;
 
   updateAuditorDeptChart();
 }
@@ -1277,12 +1419,15 @@ function exportToExcel() {
 // 10A. EXPORT AUDITOR DEPT STATISTICS TO EXCEL
 // ==========================================
 function exportAuditorDeptData() {
-  if (auditsDatabase.length === 0 && !BASELINE_AREA_PERCENTAGES[selectedMonth]) {
+  const period = DASHBOARD_PERIODS.find(p => p.id === selectedDashboardPeriod) || DASHBOARD_PERIODS[0];
+  const periodAudits = auditsDatabase.filter(a => a.date && a.date >= period.startDate && a.date <= period.endDate);
+  const hasBaseline = selectedDashboardPeriod === 'fy69' && !!BASELINE_AREA_PERCENTAGES[selectedMonth];
+
+  if (periodAudits.length === 0 && !hasBaseline) {
     showToast('ไม่มีข้อมูลหน่วยงานผู้ตรวจเพื่อส่งออก', 'error');
     return;
   }
 
-  const hasBaseline = !!BASELINE_AREA_PERCENTAGES[selectedMonth];
   const DEPT_LIST   = BASELINE_AREA_PERCENTAGES['Jan'].map(d => d.area);
 
   const rows = [];
@@ -1299,7 +1444,7 @@ function exportAuditorDeptData() {
       percentage: item.percentage,
       actualCount: Math.round((item.percentage / 100) * FIXED_TARGET_COUNT)
     }));
-    auditsDatabase.forEach(audit => {
+    periodAudits.forEach(audit => {
       if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept) {
         const match = areaData.find(a => a.area === audit.auditorDept);
         if (match) {
@@ -1311,6 +1456,7 @@ function exportAuditorDeptData() {
 
     areaData.forEach(d => {
       rows.push({
+        'รอบปีงบประมาณ': period.label,
         'เดือน': thMonth,
         'หน่วยงานผู้ตรวจ': d.area,
         'จำนวนตรวจจริง (ใบ)': d.actualCount,
@@ -1321,7 +1467,7 @@ function exportAuditorDeptData() {
   } else {
     const deptCounts = {};
     DEPT_LIST.forEach(d => { deptCounts[d] = 0; });
-    auditsDatabase.forEach(audit => {
+    periodAudits.forEach(audit => {
       if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept && deptCounts.hasOwnProperty(audit.auditorDept)) {
         deptCounts[audit.auditorDept]++;
       }
@@ -1331,6 +1477,7 @@ function exportAuditorDeptData() {
       const count = deptCounts[d];
       const pct = parseFloat(((count / FIXED_TARGET_COUNT) * 100).toFixed(2));
       rows.push({
+        'รอบปีงบประมาณ': period.label,
         'เดือน': thMonth,
         'หน่วยงานผู้ตรวจ': d,
         'จำนวนตรวจจริง (ใบ)': count,
@@ -1782,22 +1929,56 @@ function showToast(message, type = 'success') {
 // 13. DASHBOARD ANALYTICS
 // ==========================================
 function updateDashboard() {
-  // Build dynamic counts from recorded audits
-  const dynamicMonthlyCounts = {};
-  editableBaseline.forEach(b => { dynamicMonthlyCounts[b.month] = { inspect: 0, defect: 0 }; });
+  const period = DASHBOARD_PERIODS.find(p => p.id === selectedDashboardPeriod) || DASHBOARD_PERIODS[0];
 
-  auditsDatabase.forEach(audit => {
-    const month = getMonthShortFromDate(audit.date);
+  // Sync select element if needed
+  const periodSelect = document.getElementById('dashboard-period-select');
+  if (periodSelect && periodSelect.value !== period.id) {
+    periodSelect.value = period.id;
+  }
+
+  // Baseline items belonging to this period
+  const periodBaseline = editableBaseline.filter(b => period.months.includes(b.month));
+
+  // Dynamic counts for this period's months
+  const dynamicMonthlyCounts = {};
+  periodBaseline.forEach(b => { dynamicMonthlyCounts[b.month] = { inspect: 0, defect: 0 }; });
+
+  // Filter audits for this period
+  const periodAudits = auditsDatabase.filter(audit => {
+    return audit.date && audit.date >= period.startDate && audit.date <= period.endDate;
+  });
+
+  periodAudits.forEach(audit => {
+    const month = getMonthKeyFromDate(audit.date);
     if (dynamicMonthlyCounts[month]) {
       dynamicMonthlyCounts[month].inspect++;
       if (audit.status === 'non_conformance') dynamicMonthlyCounts[month].defect++;
     }
   });
 
-  // Only show months with data (total > 0 OR baseline inspect > 0 OR recorded audits > 0)
-  const activeMonths = editableBaseline.filter(b =>
-    b.total > 0 || b.inspect > 0 || (dynamicMonthlyCounts[b.month] && dynamicMonthlyCounts[b.month].inspect > 0)
-  );
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentYear = now.getFullYear();
+  const currentMonthNum = now.getMonth() + 1; // 1-12
+
+  // Determine which months in this period should be displayed:
+  // 1) If period is completely finished (period.endDate < todayStr), show all 12 months!
+  // 2) If period is ongoing: show months up to the current calendar month, OR months with data (total > 0 || inspect > 0 || dynamic inspect > 0).
+  const isPeriodCompleted = period.endDate < todayStr;
+
+  let activeMonths = periodBaseline.filter(b => {
+    if (isPeriodCompleted) return true;
+    const isUpToCurrent = b.year && b.monthNum
+      ? (b.year < currentYear || (b.year === currentYear && b.monthNum <= currentMonthNum))
+      : false;
+    const hasData = b.total > 0 || b.inspect > 0 || (dynamicMonthlyCounts[b.month] && dynamicMonthlyCounts[b.month].inspect > 0);
+    return isUpToCurrent || hasData;
+  });
+
+  if (activeMonths.length === 0 && periodBaseline.length > 0) {
+    activeMonths = [periodBaseline[0]];
+  }
 
   const currentOverall = activeMonths.map(base => {
     const added  = dynamicMonthlyCounts[base.month] ? dynamicMonthlyCounts[base.month].inspect : 0;
@@ -1812,7 +1993,7 @@ function updateDashboard() {
     const addedDef  = dynamicMonthlyCounts[base.month] ? dynamicMonthlyCounts[base.month].defect : 0;
     const newDef    = Math.max(base.defect, addedDef);
     const defRate   = totalIns > 0 ? (newDef / totalIns) * 100 : 0;
-    return { month: base.month, defectCount: newDef, defectRate: parseFloat(defRate.toFixed(2)) };
+    return { month: base.month, label: base.label, defectCount: newDef, defectRate: parseFloat(defRate.toFixed(2)) };
   });
 
   const totalInspect = currentOverall.reduce((s, c) => s + c.inspect, 0);
@@ -1853,6 +2034,15 @@ function updateDashboard() {
     kpiIcon.style.color             = 'rgba(239, 68, 68, 0.08)';
   }
 
+  const ptwSubtitle = document.getElementById('ptw-chart-subtitle');
+  if (ptwSubtitle) {
+    ptwSubtitle.textContent = `สถิติภาพรวมรายเดือนรอบ ${period.label} เทียบกับเป้าหมายขั้นต่ำ 10%`;
+  }
+  const defectSubtitle = document.getElementById('defect-chart-subtitle');
+  if (defectSubtitle) {
+    defectSubtitle.textContent = `เกณฑ์ควบคุม: ต้องไม่เกิน 0.19% ของจำนวนใบที่สุ่มตรวจ (รอบ ${period.label})`;
+  }
+
   lucide.createIcons();
   renderComposedChart(currentOverall);
   renderDefectChart(currentDefects);
@@ -1865,7 +2055,7 @@ function renderComposedChart(data) {
   const ctx = document.getElementById('composedChart').getContext('2d');
   if (charts.composed) charts.composed.destroy();
 
-  const labels      = data.map(d => d.month);
+  const labels      = data.map(d => d.label || d.month);
   const percentages = data.map(d => d.percentage);
 
   charts.composed = new Chart(ctx, {
@@ -1886,6 +2076,10 @@ function renderComposedChart(data) {
           backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1,
           titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' },
           callbacks: {
+            title: ctx => {
+              const item = data[ctx[0].dataIndex];
+              return item ? (item.label || item.month) : '';
+            },
             label: ctx => {
               const baseText = ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%`;
               if (ctx.datasetIndex === 0 || ctx.datasetIndex === 1) {
@@ -1909,7 +2103,7 @@ function renderDefectChart(data) {
   const ctx = document.getElementById('defectChart').getContext('2d');
   if (charts.defect) charts.defect.destroy();
 
-  const labels      = data.map(d => d.month);
+  const labels      = data.map(d => d.label || d.month);
   const defectRates = data.map(d => d.defectRate);
   const barColors   = defectRates.map(rate => rate >= DEFECT_TARGET ? '#ef4444' : '#10b981');
 
@@ -1926,7 +2120,17 @@ function renderDefectChart(data) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { family: 'Prompt', size: 11 }, color: '#64748b' } },
-        tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1, titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' }, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%` } }
+        tooltip: {
+          backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#1e293b', borderColor: '#e2e8f0', borderWidth: 1,
+          titleFont: { family: 'Prompt', weight: 'bold' }, bodyFont: { family: 'Prompt' },
+          callbacks: {
+            title: ctx => {
+              const item = data[ctx[0].dataIndex];
+              return item ? (item.label || item.month) : '';
+            },
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%`
+          }
+        }
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Prompt', weight: 'bold' } } },
@@ -1936,12 +2140,26 @@ function renderDefectChart(data) {
   });
 }
 
-// Chart 3: Auditor Dept Breakdown — baseline months + recorded-only for Apr/May
+// Chart 3: Auditor Dept Breakdown — baseline months + recorded-only
 function updateAuditorDeptChart() {
   const ctx = document.getElementById('auditorDeptChart').getContext('2d');
   if (charts.auditorDept) charts.auditorDept.destroy();
 
-  const hasBaseline = !!BASELINE_AREA_PERCENTAGES[selectedMonth];
+  const period = DASHBOARD_PERIODS.find(p => p.id === selectedDashboardPeriod) || DASHBOARD_PERIODS[0];
+  const periodAudits = auditsDatabase.filter(a => a.date && a.date >= period.startDate && a.date <= period.endDate);
+
+  const monthThai = { Nov:'พ.ย.', Dec:'ธ.ค.', Jan:'ม.ค.', Feb:'ก.พ.', Mar:'มี.ค.', Apr:'เม.ย.', May:'พ.ค.', Jun:'มิ.ย.', Jul:'ก.ค.', Aug:'ส.ค.', Sep:'ก.ย.', Oct:'ต.ค.' };
+  const subtitle = document.getElementById('auditor-chart-subtitle');
+  if (subtitle) {
+    subtitle.textContent = `ข้อมูลประจำเดือน ${monthThai[selectedMonth] || selectedMonth} (${period.label}) | เป้าหมายมาตรฐาน 40 ใบ/หน่วยงาน/เดือน`;
+  }
+  const allMonths = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+  allMonths.forEach(m => {
+    const btn = document.getElementById(`btn-month-${m}`);
+    if (btn) btn.classList.toggle('active', m === selectedMonth);
+  });
+
+  const hasBaseline = selectedDashboardPeriod === 'fy69' && !!BASELINE_AREA_PERCENTAGES[selectedMonth];
   const DEPT_LIST   = BASELINE_AREA_PERCENTAGES['Jan'].map(d => d.area);
 
   let labels, percentages, counts, maxY;
@@ -1954,7 +2172,7 @@ function updateAuditorDeptChart() {
       percentage: item.percentage,
       actualCount: Math.round((item.percentage / 100) * FIXED_TARGET_COUNT)
     }));
-    auditsDatabase.forEach(audit => {
+    periodAudits.forEach(audit => {
       if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept) {
         const match = areaData.find(a => a.area === audit.auditorDept);
         if (match) {
@@ -1986,7 +2204,7 @@ function updateAuditorDeptChart() {
     // No baseline: show recorded-only as actual count bar
     const deptCounts = {};
     DEPT_LIST.forEach(d => { deptCounts[d] = 0; });
-    auditsDatabase.forEach(audit => {
+    periodAudits.forEach(audit => {
       if (getMonthShortFromDate(audit.date) === selectedMonth && audit.auditorDept && deptCounts.hasOwnProperty(audit.auditorDept)) {
         deptCounts[audit.auditorDept]++;
       }
@@ -1994,7 +2212,8 @@ function updateAuditorDeptChart() {
     labels      = DEPT_LIST;
     counts      = DEPT_LIST.map(d => deptCounts[d]);
     percentages = counts.map(c => parseFloat(((c / FIXED_TARGET_COUNT) * 100).toFixed(2)));
-    maxY        = 150;
+    const maxVal = Math.max(...counts, FIXED_TARGET_COUNT);
+    maxY        = Math.max(50, Math.ceil((maxVal + 10) / 10) * 10);
 
     const purpleGradient = ctx.createLinearGradient(0, 0, 0, 400);
     purpleGradient.addColorStop(0, '#a78bfa');
@@ -2046,25 +2265,30 @@ function updateWorkAreaChart() {
   const ctx = document.getElementById('workAreaChart').getContext('2d');
   if (charts.workArea) charts.workArea.destroy();
 
+  const period = DASHBOARD_PERIODS.find(p => p.id === selectedDashboardPeriod) || DASHBOARD_PERIODS[0];
+  const periodAudits = auditsDatabase.filter(a => a.date && a.date >= period.startDate && a.date <= period.endDate);
+
   // Filter audits by selected month
   const filteredAudits = selectedWorkAreaMonth === 'all'
-    ? auditsDatabase
-    : auditsDatabase.filter(a => getMonthShortFromDate(a.date) === selectedWorkAreaMonth);
+    ? periodAudits
+    : periodAudits.filter(a => getMonthShortFromDate(a.date) === selectedWorkAreaMonth);
 
   const areaCounts = {};
   WORK_AREAS.forEach(a => { areaCounts[a] = 0; });
   
-  // Add baseline counts
-  if (selectedWorkAreaMonth === 'all') {
-    Object.values(BASELINE_WORK_AREA_COUNTS).forEach(monthCounts => {
+  // Add baseline counts only for FY69
+  if (selectedDashboardPeriod === 'fy69') {
+    if (selectedWorkAreaMonth === 'all') {
+      Object.values(BASELINE_WORK_AREA_COUNTS).forEach(monthCounts => {
+        WORK_AREAS.forEach((a, idx) => { areaCounts[a] += monthCounts[idx]; });
+      });
+    } else if (BASELINE_WORK_AREA_COUNTS[selectedWorkAreaMonth]) {
+      const monthCounts = BASELINE_WORK_AREA_COUNTS[selectedWorkAreaMonth];
       WORK_AREAS.forEach((a, idx) => { areaCounts[a] += monthCounts[idx]; });
-    });
-  } else if (BASELINE_WORK_AREA_COUNTS[selectedWorkAreaMonth]) {
-    const monthCounts = BASELINE_WORK_AREA_COUNTS[selectedWorkAreaMonth];
-    WORK_AREAS.forEach((a, idx) => { areaCounts[a] += monthCounts[idx]; });
+    }
   }
 
-  // Add actual recorded counts from auditsDatabase
+  // Add actual recorded counts from filteredAudits
   filteredAudits.forEach(audit => {
     if (audit.workArea && areaCounts.hasOwnProperty(audit.workArea)) areaCounts[audit.workArea]++;
   });
@@ -2076,8 +2300,12 @@ function updateWorkAreaChart() {
   // Update subtitle
   const subtitle = document.getElementById('area-chart-subtitle');
   if (subtitle) {
-    const monthLabel = selectedWorkAreaMonth === 'all' ? 'ทั้งหมด' : selectedWorkAreaMonth;
-    subtitle.textContent = `ข้อมูลประจำเดือน ${monthLabel}`;
+    const monthNamesTh = {
+      all: 'ทั้งหมด', Nov: 'พ.ย.', Dec: 'ธ.ค.', Jan: 'ม.ค.', Feb: 'ก.พ.', Mar: 'มี.ค.',
+      Apr: 'เม.ย.', May: 'พ.ค.', Jun: 'มิ.ย.', Jul: 'ก.ค.', Aug: 'ส.ค.', Sep: 'ก.ย.', Oct: 'ต.ค.'
+    };
+    const monthLabel = monthNamesTh[selectedWorkAreaMonth] || selectedWorkAreaMonth;
+    subtitle.textContent = `ข้อมูลประจำเดือน ${monthLabel} (${period.label}) | รวม ${totalAll.toLocaleString()} ใบ`;
   }
 
   const gradient = ctx.createLinearGradient(0, 0, 0, 350);
@@ -2137,15 +2365,23 @@ function changeWorkAreaMonth(month) {
 // ==========================================
 // 15. DASHBOARD EDITOR (Editable Baseline)
 // ==========================================
-function openDashboardEditor() {
-  const modal = document.getElementById('dashboard-editor-modal');
-  const container = document.getElementById('dashboard-editor-table');
+let editorModalPeriod = 'fy70';
 
-  // Count recorded audits and defects per month
+function renderDashboardEditorTable(periodId) {
+  editorModalPeriod = periodId || editorModalPeriod;
+  const container = document.getElementById('dashboard-editor-table');
+  if (!container) return;
+
+  const period = DASHBOARD_PERIODS.find(p => p.id === editorModalPeriod) || DASHBOARD_PERIODS[0];
+  const periodBaseline = editableBaseline.filter(b => period.months.includes(b.month));
+
+  // Count recorded audits and defects per month for this period
   const dbCounts = {};
-  editableBaseline.forEach(b => { dbCounts[b.month] = { inspect: 0, defect: 0 }; });
-  auditsDatabase.forEach(audit => {
-    const month = getMonthShortFromDate(audit.date);
+  periodBaseline.forEach(b => { dbCounts[b.month] = { inspect: 0, defect: 0 }; });
+
+  const periodAudits = auditsDatabase.filter(a => a.date && a.date >= period.startDate && a.date <= period.endDate);
+  periodAudits.forEach(audit => {
+    const month = getMonthKeyFromDate(audit.date);
     if (dbCounts.hasOwnProperty(month)) {
       dbCounts[month].inspect++;
       if (audit.status === 'non_conformance') dbCounts[month].defect++;
@@ -2153,6 +2389,19 @@ function openDashboardEditor() {
   });
 
   container.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; background:#f8fafc; padding:10px 16px; border-radius:var(--radius-md); border:1.5px solid var(--border-color);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <i data-lucide="calendar-range" style="width:18px;height:18px;color:var(--primary);"></i>
+        <label for="editor-period-select" style="font-size:0.88rem; font-weight:700; color:var(--text-headings); margin:0;">รอบปีงบประมาณที่ต้องการแก้ไข:</label>
+      </div>
+      <select id="editor-period-select" onchange="onEditorPeriodChange(this.value)"
+        style="border:1.5px solid var(--primary); border-radius:6px; padding:6px 14px; font-family:'Prompt',sans-serif; font-size:0.88rem; font-weight:700; color:var(--text-headings); background:#ffffff; cursor:pointer; outline:none;">
+        ${DASHBOARD_PERIODS.map(p => `
+          <option value="${p.id}" ${p.id === editorModalPeriod ? 'selected' : ''}>${p.label}</option>
+        `).join('')}
+      </select>
+    </div>
+
     <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
       <thead>
         <tr style="background:#f8fafc;">
@@ -2163,9 +2412,9 @@ function openDashboardEditor() {
         </tr>
       </thead>
       <tbody>
-        ${editableBaseline.map((b, i) => {
-          const dbInspect = dbCounts[b.month].inspect;
-          const dbDefect = dbCounts[b.month].defect;
+        ${periodBaseline.map((b) => {
+          const dbInspect = dbCounts[b.month] ? dbCounts[b.month].inspect : 0;
+          const dbDefect = dbCounts[b.month] ? dbCounts[b.month].defect : 0;
           
           // Auto-active if we have DB records and the database count matches or exceeds the baseline
           const isDbActive = dbInspect > 0 && b.inspect <= dbInspect;
@@ -2180,15 +2429,15 @@ function openDashboardEditor() {
                 ${isDbActive ? '<span style="font-size:0.65rem;background:#dbeafe;color:#1e40af;padding:1px 8px;border-radius:50px;border:1px solid #bfdbfe;margin-left:6px;font-weight:700;">Auto</span>' : ''}
               </td>
               <td style="padding:8px 12px;">
-                <input type="number" id="baseline-total-${i}" value="${b.total}" min="0"
+                <input type="number" id="baseline-total-${b.month}" value="${b.total}" min="0"
                   style="width:100%;text-align:center;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;">
               </td>
               <td style="padding:8px 12px;">
-                <input type="number" id="baseline-inspect-${i}" value="${displayInspect}" min="0"
+                <input type="number" id="baseline-inspect-${b.month}" value="${displayInspect}" min="0"
                   style="width:100%;text-align:center;border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#eff6ff;">
               </td>
               <td style="padding:8px 12px;">
-                <input type="number" id="baseline-defect-${i}" value="${displayDefect}" min="0"
+                <input type="number" id="baseline-defect-${b.month}" value="${displayDefect}" min="0"
                   style="width:100%;text-align:center;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:8px;font-family:Prompt,sans-serif;font-weight:700;font-size:1rem;background:#fff5f5;">
               </td>
             </tr>
@@ -2201,7 +2450,35 @@ function openDashboardEditor() {
     </p>
   `;
 
-  modal.classList.add('active');
+  lucide.createIcons();
+}
+
+function saveCurrentEditorInputsToState() {
+  const period = DASHBOARD_PERIODS.find(p => p.id === editorModalPeriod) || DASHBOARD_PERIODS[0];
+  period.months.forEach(monthKey => {
+    const totalEl   = document.getElementById(`baseline-total-${monthKey}`);
+    const inspectEl = document.getElementById(`baseline-inspect-${monthKey}`);
+    const defectEl  = document.getElementById(`baseline-defect-${monthKey}`);
+    if (totalEl && inspectEl && defectEl) {
+      const b = editableBaseline.find(item => item.month === monthKey);
+      if (b) {
+        b.total   = parseInt(totalEl.value)   || 0;
+        b.inspect = parseInt(inspectEl.value) || 0;
+        b.defect  = parseInt(defectEl.value)  || 0;
+      }
+    }
+  });
+}
+
+function onEditorPeriodChange(newPeriodId) {
+  saveCurrentEditorInputsToState();
+  renderDashboardEditorTable(newPeriodId);
+}
+
+function openDashboardEditor() {
+  editorModalPeriod = selectedDashboardPeriod;
+  renderDashboardEditorTable(editorModalPeriod);
+  document.getElementById('dashboard-editor-modal').classList.add('active');
   lucide.createIcons();
 }
 
@@ -2212,11 +2489,7 @@ function closeDashboardEditor(event) {
 }
 
 async function saveDashboardSettings() {
-  editableBaseline.forEach((b, i) => {
-    b.total   = parseInt(document.getElementById(`baseline-total-${i}`).value)   || 0;
-    b.inspect = parseInt(document.getElementById(`baseline-inspect-${i}`).value) || 0;
-    b.defect  = parseInt(document.getElementById(`baseline-defect-${i}`).value)  || 0;
-  });
+  saveCurrentEditorInputsToState();
 
   try {
     await db.collection('settings').doc('baseline').set({ data: editableBaseline });

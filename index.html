@@ -96,7 +96,20 @@
         <h2 id="dashboard-title" style="display:none">แดชบอร์ดข้อมูลสถิติ PTW</h2>
 
         <!-- Dashboard Action Bar -->
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 14px;">
+          <!-- Period Range Selector -->
+          <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; padding: 6px 14px; border-radius: var(--radius-lg); border: 1.5px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700;">
+              <i data-lucide="calendar-range" style="width: 17px; height: 17px; color: var(--primary);"></i>
+              <span>ช่วงข้อมูล:</span>
+            </div>
+            <select id="dashboard-period-select" onchange="changeDashboardPeriod(this.value)" 
+              style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 7px 14px; font-family: 'Prompt', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--text-headings); background: #f8fafc; cursor: pointer; outline: none;">
+              <option value="fy70" selected>1 พ.ย. 69 - 30 ต.ค. 70</option>
+              <option value="fy69">1 พ.ย. 68 - 30 ต.ค. 69</option>
+            </select>
+          </div>
+
           <button class="btn btn-secondary" onclick="openDashboardEditor()" id="btn-edit-dashboard" style="gap: 8px; border: 1.5px dashed var(--border-hover); color: var(--text-muted);">
             <i data-lucide="database" style="width:17px;height:17px;"></i>
             <span>แก้ไขข้อมูลสรุปรายเดือน Dashboard</span>
@@ -827,7 +840,7 @@
     };
   </script>
 
-  <script src="app.js?v=1.4.10"></script>
+  <script src="app.js?v=1.4.14"></script>
 
   <!-- ADD PR MODAL -->
   <div class="modal-overlay" id="add-pr-modal" onclick="closePrModal(event)">
